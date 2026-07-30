@@ -13,19 +13,26 @@ public class PriceLevel {
 
     public void addOrder(Order order) {
 
-        if (order.getPrice() != price) {
+        if (order.getPriceTicks() != price) {
             throw new IllegalArgumentException("Price not matching. Insert into appropriate price-level.");
         }
 
         orders.add(order);
         totalVolume += order.getRemainingQuantity();
         // totalVolume is total workable/tradable volume.
+        // Since it is initialization, and orders cannot move across price levels,
+        // order.getOriginalQuantity() may also work.
     }
 
     public Order peekFirstOrder() {
 
         if (orders.isEmpty()) {
             return null;
+        }
+        if (orders.peekFirst().getRemainingQuantity() == 0) {
+            throw new IllegalStateException(
+                    "Fully-filled order left in queue"
+            );
         }
 
         return orders.peekFirst();
@@ -41,15 +48,45 @@ public class PriceLevel {
         return order;
     }
 
-    public boolean isEmpty() {
-        return (this.orders.isEmpty());
-    }
-
     public long getTotalVolume() {
         return this.totalVolume;
     }
 
     public long getPrice() {
         return this.price;
+    }
+
+    public long fillHeadOrder(long quantity) {
+        Order o = orders.peekFirst();
+
+        if (o == null) {
+            throw new NoSuchElementException("There is no order at the given price");
+        }
+        if (quantity <= 0) {
+            throw new IllegalArgumentException("Quantity must be positive");
+        }
+
+        long quantityToFill = Math.min(
+                o.getRemainingQuantity(),
+                quantity
+        );
+        o.fill(quantityToFill);
+
+        totalVolume -= quantityToFill;
+
+        if (o.getRemainingQuantity() == 0) { // Maybe return the order id of the order that has been exhausted.
+            orders.pollFirst();
+        }
+
+        return quantityToFill;
+    }
+
+    public boolean isFullyConsumed() {
+//        return (totalVolume == 0);
+
+        // Or
+         return orders.isEmpty();
+
+         // This is better since totalVolume is a derived state.
     }
 }
