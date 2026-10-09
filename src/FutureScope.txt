@@ -1,0 +1,5 @@
+Later, when we start caring about reproducibility and deterministic testing,
+we'll probably inject a Clock (or another time source) so tests don't depend on wall-clock time.
+
+Separate:   Incoming order timestamp, Trade timestamp - as there will be a few microseconds difference between
+both.

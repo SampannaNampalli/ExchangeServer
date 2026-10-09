@@ -1,29 +1,37 @@
 import java.time.Instant;
-import java.util.*;
 
 public class Order {
     private final long orderId;
     private final Side side;
-    private final long price;
+    private final long priceTicks;
     private final long originalQuantity;
     private final Instant timestamp; // exchangeTimestamp?
+    private static final long MAX_ORDER_QUANTITY = 1000000000L;
 
     private long filledQuantity;
 
-    public Order(long orderId, Side side, long price, long originalQuantity, Instant timestamp) {
+    public Order(long orderId, Side side, long priceTicks, long originalQuantity, Instant timestamp) {
 
-        if (orderId < 0) {
+        if (orderId <= 0) {
             throw new IllegalArgumentException("Order ID must be positive");
         }
-        if (price < 0) {
+        if (priceTicks <= 0) {
             throw new IllegalArgumentException("Price must be positive");
         }
-        if (originalQuantity < 0) {
-            throw new IllegalArgumentException("Original quantity must be positive");
+        if (originalQuantity <= 0) {
+            throw new IllegalArgumentException("Quantity must be greater than 0.");
         }
+        if (priceTicks == Long.MAX_VALUE) {
+            throw new IllegalArgumentException("INVALID. Order priced at Long.MAX_VALUE.");
+        }
+        if (originalQuantity > MAX_ORDER_QUANTITY) {
+            throw new IllegalArgumentException("INVALID. Order quantity is not allowed. Try placing an order" +
+                    "of smaller volume.");
+        }
+
         this.orderId = orderId;
         this.side = side;
-        this.price = price;
+        this.priceTicks = priceTicks;
         this.originalQuantity = originalQuantity;
         this.timestamp = timestamp;
     }
@@ -36,8 +44,8 @@ public class Order {
         return this.side;
     }
 
-    public long getPrice() {
-        return this.price;
+    public long getPriceTicks() {
+        return this.priceTicks;
     }
 
     public long getOriginalQuantity() {

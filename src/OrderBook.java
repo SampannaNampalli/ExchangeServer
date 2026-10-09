@@ -1,3 +1,5 @@
+import jdk.jfr.Description;
+
 import java.util.*;
 
 // For cancel/update - use HashMap<Long, Order> can be used.
@@ -39,6 +41,11 @@ public class OrderBook {
         return ((plEntry == null)? Optional.empty(): Optional.ofNullable(plEntry.getValue()));
     }
 
+    @Description("Takes the actual side, not the opposite side of the incoming order")
+    public Optional<PriceLevel> bestLevel(Side side) {
+        return (side == Side.BUY) ? (bestBid()) : (bestAsk());
+    }
+
     public long getVolume(Side side, long price) {
         Map<Long, PriceLevel> map;
 
@@ -53,8 +60,6 @@ public class OrderBook {
         return pl.map(PriceLevel::getTotalVolume).orElse(0L);
     }
 
-    // Current reasons for removal of a Price Level:
-    //      1. It has become empty --> add conditional
     public void removePriceLevel(Side side) {
 
         PriceLevel pl;
@@ -62,12 +67,12 @@ public class OrderBook {
         if (side == Side.BUY) {
 
             if (bids.isEmpty()) {
-                throw new IllegalAccessError("The pricelevel is empty.");
+                throw new IllegalStateException("The price-level is empty.");
             }
             pl = bids.firstEntry().getValue();
 
             if (!pl.isFullyConsumed()) {
-                throw new IllegalStateException("Price Level is not empty.");
+                throw new IllegalStateException("Price-level is not empty.");
             }
 
             bids.remove(pl.getPrice());
@@ -75,7 +80,7 @@ public class OrderBook {
         else {
 
             if (asks.isEmpty()) {
-                throw new IllegalAccessError("The pricelevel is empty.");
+                throw new IllegalStateException("The price-level is empty.");
             }
             pl = asks.firstEntry().getValue();
 
@@ -86,12 +91,12 @@ public class OrderBook {
             asks.remove(pl.getPrice());
         }
     }
+
+    public long getNoOfBids() {
+        return bids.size();
+    }
+
+    public long getNoOfAsks() {
+        return asks.size();
+    }
 }
-
-
-//    public Optional<PriceLevel> bestBid() {
-//
-//        Optional<Map.Entry<Long, PriceLevel>> plEntry = Optional.ofNullable(bids.firstEntry());
-//        Optional<PriceLevel> bid = plEntry.map(Map.Entry<Long, PriceLevel> :: getValue);
-//        bid = bid.flatMap()
-//    }

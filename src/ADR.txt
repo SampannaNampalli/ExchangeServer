@@ -1,0 +1,76 @@
+Architecture Design Document.
+
+1. The match() function.
+
+    Why should the match() method be:
+    
+        Trade match(Order incomingOrder, Side oppositeSide)
+    
+    and not:
+    
+        Trade match(Order incomingOrder, PriceLevel restingPL)
+    
+    → match() needs the best opposite price-level at each iteration/time. So, if a currently executing order 
+    fills the head order of a price-level, and it becomes empty, the method will have to get the next valid 
+    price-level if it exists. This can be done in two areas:
+        1. The while() loop in the submit() function.
+        2. Inside the match() function.
+    
+    Keeping it inside the match() function helps separate the business logic.
+    
+    Pros and Cons:-
+
+        1. Deriving the PriceLevel inside each seperate function:
+            
+            Pros: Easy testing
+            Cons: Repetitive work in children methods.
+
+        2. Deriving it in submit():
+    
+            Pros: Reduces resource usage
+            Cons: Increases complexity of submit() method, can lead to an erroneous trade if a wrong price-level
+            is passed to a concerned method.
+
+    Final decision made to derive it in the submit() function. Main reasons as to why are:
+
+        1. Redundancy: down from three book lookups per iteration to one. That's a real, measurable win,
+        not just tidier-looking code.
+
+        2. Optimization: fewer TreeMap traversals per iteration — the same category of cost the spec already
+        flagged as "known inefficiency, deferred," except you're addressing it at the design stage instead of
+        leaving it as debt.
+
+        3. Separation of business logic: actually improved, not just preserved. Notice that
+        crosses(Order, PriceLevel) no longer needs a reference to orderBook at all — it just receives
+        data and compares. That makes it more decoupled and more unit-testable than the original delegate,
+        which is a stronger version of exactly the principle you invoked to justify the two-layer crosses()
+        split in the first place. You've made the delegate purer, not just faster.
+
+    Result:
+
+        Changed methods crosses() and match() to accept a PriceLevel instead of oppositeSide.
+
+2. Who should call removePriceLevel() after a price-level becomes empty? --> submit()
+
+    This was decided to maintain the consistent design decision of seperating responsibilities and the principle
+    - each method owning one clear responsibility.
+
+3. Quantity of an Order and in relation - a PriceLeveL:
+
+    IS quantity near Long.MAX_VALUE actually a realistic scenario worth guarding against, or is rejecting
+    a single sentinel value (Long.MAX_VALUE exactly) missing the real problem?
+
+    Think about it this way: real exchanges don't solve this by saying "you can't submit exactly Long.MAX_VALUE
+    shares." They solve it by having a sane, enforced maximum order size (e.g., no single order can exceed
+    some fixed cap, far below any overflow risk) — a business rule, not an overflow workaround.
+
+    the PriceLevel aggregate overflow is practically unreachable for the
+    many-small-orders scenario, but that unreachability doesn't come from
+    MAX_ORDER_QUANTITY — it comes from ArrayDeque's own limits, independent
+    of your cap.
+
+    Fixed quantity to 1 Billion trades per price-level:
+
+    That's a reasonable ballpark, and honestly it's fine to not know this from experience — real exchanges publish these as explicit, documented limits precisely because they're policy decisions, not derived constants. For reference: some real venues do cap single order sizes in the range of millions to tens of millions of shares/contracts for exactly this reason (fat-finger protection, risk control), so 100 million as your estimate of "a very large legitimate order" isn't unreasonable.
+
+    So landing on MAX_ORDER_QUANTITY = 1_000_000_000L (1 billion) gives you roughly 10x headroom above your own estimate of the largest plausible legitimate order — comfortably large enough not to reject anything real, comfortably far from any overflow concern. That's a real justification now, not a placeholder.
