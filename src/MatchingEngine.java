@@ -2,11 +2,6 @@ import java.util.*;
 import java.time.Instant;
 
 /*
-Todo - Things to be checked once MatchingEngine is implemented:
-
-1. No fully-filled order remains in a PriceLevel
-2. Maybe add sequence number in addition to ID.
-
 Other:
 1. Do not get confused between deriving a state and and passing a derived state.
  */
