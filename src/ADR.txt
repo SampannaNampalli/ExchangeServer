@@ -74,3 +74,4 @@ Architecture Design Document.
     That's a reasonable ballpark, and honestly it's fine to not know this from experience — real exchanges publish these as explicit, documented limits precisely because they're policy decisions, not derived constants. For reference: some real venues do cap single order sizes in the range of millions to tens of millions of shares/contracts for exactly this reason (fat-finger protection, risk control), so 100 million as your estimate of "a very large legitimate order" isn't unreasonable.
 
     So landing on MAX_ORDER_QUANTITY = 1_000_000_000L (1 billion) gives you roughly 10x headroom above your own estimate of the largest plausible legitimate order — comfortably large enough not to reject anything real, comfortably far from any overflow concern. That's a real justification now, not a placeholder.
+

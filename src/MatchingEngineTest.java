@@ -50,53 +50,6 @@ class MatchingEngineTest {
         class BoundaryValueTests {
 
             @Nested
-            class MaxLimitTests {
-
-                @Nested
-                class BuyTests {
-
-                    @Test
-                    void incomingBuyPricedAtMaxLimitIsRejected() {
-                        assertThrows(IllegalArgumentException.class,
-                                () -> {
-                                    assertTrue(matchingEngine.crosses(Long.MAX_VALUE, 100, Side.SELL));
-                                });
-                    }
-
-                    @Test
-                    void restingBuyPricedAtMaxLimitIsRejected() {
-                        assertThrows(IllegalArgumentException.class,
-                                () -> {
-                                    assertTrue(matchingEngine.crosses(100, Long.MAX_VALUE, Side.BUY));
-                                });
-                    }
-
-                }
-
-                @Nested
-                class SellTests {
-
-                    @Test
-                    void incomingSellPricedAtMaxLimitIsRejected() {
-                        assertThrows(IllegalArgumentException.class,
-                                () -> {
-                                    assertTrue(matchingEngine.crosses(Long.MAX_VALUE, 100, Side.BUY));
-                                });
-                    }
-
-                    @Test
-                    void restingSellPricedAtMaxLimitIsRejected() {
-                        assertThrows(IllegalArgumentException.class,
-                                () -> {
-                                    assertTrue(matchingEngine.crosses(100, Long.MAX_VALUE, Side.SELL));
-                                });
-                    }
-
-                }
-
-            }
-
-            @Nested
             class MinLimitTests {
 
                 @Test
@@ -107,53 +60,6 @@ class MatchingEngineTest {
                 @Test
                 void incomingBuyPricedAtMinLimitIsAccepted() {
                     assertTrue(matchingEngine.crosses(1, 1, Side.SELL));
-                }
-
-            }
-
-            @Nested
-            class InvalidPriceTests {
-
-                @Nested
-                class BuyTests {
-
-                    @Test
-                    void incomingBuyPricedAt0itIsRejected() {
-                        assertThrows(IllegalArgumentException.class,
-                                () -> {
-                                    assertTrue(matchingEngine.crosses(0, 1, Side.SELL));
-                                });
-                    }
-
-                    @Test
-                    void incomingBuyPricedBelow0IsRejected() {
-                        assertThrows(IllegalArgumentException.class,
-                                () -> {
-                                    assertTrue(matchingEngine.crosses(-1, 1, Side.SELL));
-                                });
-                    }
-
-                }
-
-                @Nested
-                class SellTests {
-
-                    @Test
-                    void incomingSellPricedAt0IsRejected() {
-                        assertThrows(IllegalArgumentException.class,
-                                () -> {
-                                    assertTrue(matchingEngine.crosses(0, 1, Side.BUY));
-                                });
-                    }
-
-                    @Test
-                    void incomingSellPricedBelow0IsRejected() {
-                        assertThrows(IllegalArgumentException.class,
-                                () -> {
-                                    assertTrue(matchingEngine.crosses(-100, 1, Side.BUY));
-                                });
-                    }
-
                 }
 
             }

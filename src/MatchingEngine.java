@@ -20,64 +20,19 @@ public class MatchingEngine {
     // Create an incoming order from a request and return it.
     public Order createOrder(Side side, long price, long quantity) {
 
-        // Stop invalid orders before creation.
-        if (price <= 0) {
-            throw new IllegalArgumentException("Price must be positive.");
-        }
-        if (price == Long.MAX_VALUE) {
-            throw new IllegalArgumentException("INVALID. Order priced at Long.MAX_VALUE.");
-        }
-        if (quantity <= 0) {
-            throw new IllegalArgumentException("Quantity must be positive.");
-        }
-        if (quantity == Long.MAX_VALUE) {
-            throw new IllegalArgumentException("INVALID. Order quantity is Long.MAX_VALUE.");
-        }
-
         return new Order(nextOrderId++, side, price, quantity, Instant.now());
     }
 
     // Make private after testing.
     Order createOrder(OrderRequest orderRequest) {
 
-        Side side = orderRequest.getSide();
-        long price = orderRequest.getPrice();
-        long quantity = orderRequest.getQuantity();
-
-//        // Stop invalid orders before creation.
-//        if (price <= 0) {
-//            throw new IllegalArgumentException("Price must be positive.");
-//        }
-//        if (price == Long.MAX_VALUE) {
-//            throw new IllegalArgumentException("INVALID. Order priced at Long.MAX_VALUE.");
-//        }
-//        if (quantity <= 0) {
-//            throw new IllegalArgumentException("Quantity must be positive.");
-//        }
-//        if (quantity == Long.MAX_VALUE) {
-//            throw new IllegalArgumentException("INVALID. Order quantity is Long.MAX_VALUE.");
-//        }
-
-        return createOrder(side, price, quantity);
+        return createOrder(orderRequest.getSide(), orderRequest.getPrice(), orderRequest.getQuantity());
     }
 
     // Submit the incoming order for matching.
     public List<Trade> submit(OrderRequest orderRequest) {
-
-        Side side = orderRequest.getSide();
-        long price = orderRequest.getPrice();
-        long quantity = orderRequest.getQuantity();
-
-        Order incomingOrder = createOrder(side, price, quantity);
-        return process(incomingOrder);
-    }
-
-    // Kept for backward compatibility - remove afterward
-    // Submit the incoming order.
-    public List<Trade> submit(Side side, long price, long quantity) {
-
-        Order incomingOrder = createOrder(side, price, quantity);
-        return process(incomingOrder);
+        
+        return process(createOrder(orderRequest));
     }
 
     // Open only for testing. Specially to query on the status of a specific order which will not
@@ -132,14 +87,10 @@ public class MatchingEngine {
 
             Trade trade = match(incomingOrder, restingLevelOpt.get());
             trades.add(trade);
-
-            if (restingLevelOpt.get().isFullyConsumed()) {
-                orderBook.removePriceLevel(restingSide);
-            }
         }
 
         if (incomingOrder.getRemainingQuantity() > 0) {
-            orderBook.add(incomingOrder);
+            orderBook.addOrderToBook(incomingOrder);
         }
 
         return trades;
@@ -180,6 +131,18 @@ public class MatchingEngine {
         Order restingOrder = restingPL.peekFirstOrder();
         long buyOrderId, sellOrderId;
 
+        // Update the resting order.
+        // quantity is calculated at the source - fillHeadOrder() method.
+        long quantity = restingPL.fillHeadOrder(incomingOrder.getRemainingQuantity());
+
+        // Update the incoming order.
+        incomingOrder.fill(quantity);
+
+        if (restingOrder.getRemainingQuantity() == 0) {
+            orderBook.removeOrderFromBook(restingOrder.getOrderId());
+        }
+
+        // Identify BUY and SELL order.
         if (incomingOrder.getSide() == Side.BUY) {
             buyOrderId = incomingOrder.getOrderId();
             sellOrderId = restingOrder.getOrderId();
@@ -188,13 +151,6 @@ public class MatchingEngine {
             buyOrderId = restingOrder.getOrderId();
             sellOrderId = incomingOrder.getOrderId();
         }
-
-        // Update the resting order.
-        // quantity is calculated at the source - fillHeadOrder() method.
-        long quantity = restingPL.fillHeadOrder(incomingOrder.getRemainingQuantity());
-
-        // Update the incoming order.
-        incomingOrder.fill(quantity);
 
         // Construct the Trade.
         Trade trade = new Trade(quantity, restingPL.getPrice(), buyOrderId, sellOrderId, Instant.now());
@@ -224,7 +180,7 @@ public class MatchingEngine {
 
         Side restingSide = (incomingOrder.getSide() == Side.BUY) ? Side.SELL : Side.BUY;
 
-        return crosses(incomingOrder.getPriceTicks(), restingPL.getPrice(), restingSide);
+        return crosses(incomingOrder.getPrice(), restingPL.getPrice(), restingSide);
     }
 
     /*
@@ -241,11 +197,6 @@ public class MatchingEngine {
 
      */
     boolean crosses(long incomingPrice, long restingPrice, Side restingSide) {
-
-        if (incomingPrice <= 0 || restingPrice <= 0 || incomingPrice == Long.MAX_VALUE || restingPrice == Long.MAX_VALUE) {
-            throw new IllegalArgumentException(
-                    "Prices must be positive, and must not be Long.MAX_VALUE: incoming=" + incomingPrice + ", resting=" + restingPrice);
-        }
 
         if (restingSide == Side.BUY) {
             return (incomingPrice <= restingPrice);

@@ -3,25 +3,28 @@ import java.time.Instant;
 public class Order {
     private final long orderId;
     private final Side side;
-    private final long priceTicks;
+    private final long price;
     private final long originalQuantity;
-    private final Instant timestamp; // exchangeTimestamp?
-    private static final long MAX_ORDER_QUANTITY = 1000000000L;
-
+    private final Instant timestamp; // system timestamp.
+    public static final long MAX_ORDER_QUANTITY = 1000000000L;
+    public static final long MAX_PRICE = Long.MAX_VALUE / MAX_ORDER_QUANTITY;
     private long filledQuantity;
 
-    public Order(long orderId, Side side, long priceTicks, long originalQuantity, Instant timestamp) {
+    public Order(long orderId, Side side, long price, long originalQuantity, Instant timestamp) {
 
+        if (side != Side.BUY && side != Side.SELL) {
+            throw new IllegalArgumentException("Illegal Request: Select a valid Side.");
+        }
         if (orderId <= 0) {
             throw new IllegalArgumentException("Order ID must be positive");
         }
-        if (priceTicks <= 0) {
+        if (price <= 0) {
             throw new IllegalArgumentException("Price must be positive");
         }
         if (originalQuantity <= 0) {
             throw new IllegalArgumentException("Quantity must be greater than 0.");
         }
-        if (priceTicks == Long.MAX_VALUE) {
+        if (price > MAX_PRICE) {
             throw new IllegalArgumentException("INVALID. Order priced at Long.MAX_VALUE.");
         }
         if (originalQuantity > MAX_ORDER_QUANTITY) {
@@ -31,7 +34,7 @@ public class Order {
 
         this.orderId = orderId;
         this.side = side;
-        this.priceTicks = priceTicks;
+        this.price = price;
         this.originalQuantity = originalQuantity;
         this.timestamp = timestamp;
     }
@@ -44,8 +47,8 @@ public class Order {
         return this.side;
     }
 
-    public long getPriceTicks() {
-        return this.priceTicks;
+    public long getPrice() {
+        return this.price;
     }
 
     public long getOriginalQuantity() {

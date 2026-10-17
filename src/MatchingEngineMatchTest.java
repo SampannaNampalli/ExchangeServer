@@ -29,7 +29,7 @@ class MatchingEngineMatchTest {
         Order incomingOrder = new Order(2, Side.BUY, 105, 70, Instant.now());
 
         // Insert the restingOrder into the OrderBook.
-        orderBook.add(restingOrder);
+        orderBook.addOrderToBook(restingOrder);
 
         Trade trade = engine.match(incomingOrder, orderBook.bestLevel(restingOrder.getSide()).get());
         assertEquals(40, trade.getQuantity());
@@ -45,7 +45,7 @@ class MatchingEngineMatchTest {
         Order incomingOrder = new Order(2, Side.BUY, 105, 30, Instant.now());
 
         // Insert the restingOrder into the OrderBook.
-        orderBook.add(restingOrder);
+        orderBook.addOrderToBook(restingOrder);
 
         Trade trade = engine.match(incomingOrder, orderBook.bestLevel(restingOrder.getSide()).get());
         assertEquals(30, trade.getQuantity());
@@ -60,7 +60,7 @@ class MatchingEngineMatchTest {
         Order incomingOrder = new Order(2, Side.BUY, 105, 50, Instant.now());
 
         // Insert the restingOrder into the OrderBook.
-        orderBook.add(restingOrder);
+        orderBook.addOrderToBook(restingOrder);
 
         Trade trade = engine.match(incomingOrder, orderBook.bestLevel(restingOrder.getSide()).get());
         assertEquals(50, trade.getQuantity());
@@ -77,7 +77,7 @@ class MatchingEngineMatchTest {
         Order incomingOrder = new Order(2, Side.BUY, 150, 70, Instant.now());
 
         // Insert the restingOrder into the OrderBook.
-        orderBook.add(restingOrder);
+        orderBook.addOrderToBook(restingOrder);
 
         Trade trade = engine.match(incomingOrder, orderBook.bestLevel(restingOrder.getSide()).get());
         assertEquals(100, trade.getPrice());
@@ -91,7 +91,7 @@ class MatchingEngineMatchTest {
         Order incomingOrder = new Order(2, Side.SELL, 100, 70, Instant.now());
 
         // Insert the restingOrder into the OrderBook.
-        orderBook.add(restingOrder);
+        orderBook.addOrderToBook(restingOrder);
 
         Trade trade = engine.match(incomingOrder, orderBook.bestLevel(restingOrder.getSide()).get());
         assertEquals(120, trade.getPrice());
@@ -105,7 +105,7 @@ class MatchingEngineMatchTest {
         Order incomingOrder = new Order(2, Side.BUY, 100, 70, Instant.now());
 
         // Insert the restingOrder into the OrderBook.
-        orderBook.add(restingOrder);
+        orderBook.addOrderToBook(restingOrder);
 
         Trade trade = engine.match(incomingOrder, orderBook.bestLevel(restingOrder.getSide()).get());
         assertEquals(trade.getBuyOrderId(), incomingOrder.getOrderId());
@@ -118,7 +118,7 @@ class MatchingEngineMatchTest {
         Order incomingOrder = new Order(2, Side.SELL, 100, 70, Instant.now());
 
         // Insert the restingOrder into the OrderBook.
-        orderBook.add(restingOrder);
+        orderBook.addOrderToBook(restingOrder);
 
         Trade trade = engine.match(incomingOrder, orderBook.bestLevel(restingOrder.getSide()).get());
         assertEquals(trade.getBuyOrderId(), restingOrder.getOrderId());
@@ -132,7 +132,7 @@ class MatchingEngineMatchTest {
         Order incomingOrder = new Order(2, Side.BUY, 100, 70, Instant.now());
 
         // Insert the restingOrder into the OrderBook.
-        orderBook.add(restingOrder);
+        orderBook.addOrderToBook(restingOrder);
 
         Trade trade = engine.match(incomingOrder, orderBook.bestLevel(restingOrder.getSide()).get());
         assertEquals(30, incomingOrder.getRemainingQuantity());
@@ -144,7 +144,7 @@ class MatchingEngineMatchTest {
         Order incomingOrder = new Order(2, Side.BUY, 100, 40, Instant.now());
 
         // Insert the restingOrder into the OrderBook.
-        orderBook.add(restingOrder);
+        orderBook.addOrderToBook(restingOrder);
 
         Trade trade = engine.match(incomingOrder, orderBook.bestLevel(restingOrder.getSide()).get());
         assertEquals(0, incomingOrder.getRemainingQuantity());
@@ -157,7 +157,7 @@ class MatchingEngineMatchTest {
         Order incomingOrder = new Order(2, Side.BUY, 100, 70, Instant.now());
 
         // Insert the restingOrder into the OrderBook.
-        orderBook.add(restingOrder);
+        orderBook.addOrderToBook(restingOrder);
 
         Trade trade = engine.match(incomingOrder, orderBook.bestLevel(restingOrder.getSide()).get());
         assertEquals(0, restingOrder.getRemainingQuantity());
@@ -169,7 +169,7 @@ class MatchingEngineMatchTest {
         Order incomingOrder = new Order(2, Side.BUY, 100, 70, Instant.now());
 
         // Insert the restingOrder into the OrderBook.
-        orderBook.add(restingOrder);
+        orderBook.addOrderToBook(restingOrder);
 
         Trade trade = engine.match(incomingOrder, orderBook.bestLevel(restingOrder.getSide()).get());
         assertEquals(20, restingOrder.getRemainingQuantity());
@@ -182,7 +182,7 @@ class MatchingEngineMatchTest {
         Order incomingOrder = new Order(2, Side.BUY, 100, 70, Instant.now());
 
         // Insert the restingOrder into the OrderBook.
-        orderBook.add(restingOrder);
+        orderBook.addOrderToBook(restingOrder);
         PriceLevel restingPL = orderBook.bestLevel(restingOrder.getSide()).get();
 
         Trade trade = engine.match(incomingOrder, orderBook.bestLevel(restingOrder.getSide()).get());
@@ -196,8 +196,8 @@ class MatchingEngineMatchTest {
         Order incomingOrder = new Order(2, Side.BUY, 105, 70, Instant.now());
 
         // Insert the restingOrder into the OrderBook.
-        orderBook.add(restingOrder1);
-        orderBook.add(restingOrder2);
+        orderBook.addOrderToBook(restingOrder1);
+        orderBook.addOrderToBook(restingOrder2);
         PriceLevel restingPL = orderBook.bestLevel(restingOrder1.getSide()).get();
 
         Trade trade = engine.match(incomingOrder, orderBook.bestLevel(restingOrder1.getSide()).get());
@@ -214,8 +214,8 @@ class MatchingEngineMatchTest {
         Order incomingOrder = new Order(2, Side.BUY, 105, 20, Instant.now());
 
         // Insert the restingOrder into the OrderBook.
-        orderBook.add(restingOrder1);
-        orderBook.add(restingOrder2);
+        orderBook.addOrderToBook(restingOrder1);
+        orderBook.addOrderToBook(restingOrder2);
         PriceLevel restingPL = orderBook.bestLevel(restingOrder1.getSide()).get();
 
         Trade trade = engine.match(incomingOrder, orderBook.bestLevel(restingOrder1.getSide()).get());
@@ -231,8 +231,8 @@ class MatchingEngineMatchTest {
         Order incomingOrder = new Order(2, Side.BUY, 105, 20, Instant.now());
 
         // Insert the restingOrder into the OrderBook.
-        orderBook.add(restingOrder1);
-        orderBook.add(restingOrder2);
+        orderBook.addOrderToBook(restingOrder1);
+        orderBook.addOrderToBook(restingOrder2);
         PriceLevel restingPL = orderBook.bestLevel(restingOrder1.getSide()).get();
 
         Trade trade = engine.match(incomingOrder, orderBook.bestLevel(restingOrder1.getSide()).get());
@@ -247,8 +247,8 @@ class MatchingEngineMatchTest {
         Order incomingOrder = new Order(2, Side.BUY, 105, 15, Instant.now());
 
         // Insert the restingOrder into the OrderBook.
-        orderBook.add(restingOrder1);
-        orderBook.add(restingOrder2);
+        orderBook.addOrderToBook(restingOrder1);
+        orderBook.addOrderToBook(restingOrder2);
         PriceLevel restingPL = orderBook.bestLevel(restingOrder1.getSide()).get();
 
         Trade trade = engine.match(incomingOrder, orderBook.bestLevel(restingOrder1.getSide()).get());
@@ -266,7 +266,7 @@ class MatchingEngineMatchTest {
         Order incomingOrder = new Order(2, Side.BUY, 105, 70, Instant.now());
 
         // Insert the restingOrder into the OrderBook.
-        orderBook.add(restingOrder1);
+        orderBook.addOrderToBook(restingOrder1);
 
         Trade trade = engine.match(incomingOrder, orderBook.bestLevel(restingOrder1.getSide()).get());
         assertTrue(incomingOrder.getTimestamp().isAfter(restingOrder1.getTimestamp()));
@@ -278,7 +278,7 @@ class MatchingEngineMatchTest {
         Order incomingOrder = new Order(2, Side.BUY, 105, 70, Instant.now());
 
         // Insert the restingOrder into the OrderBook.
-        orderBook.add(restingOrder1);
+        orderBook.addOrderToBook(restingOrder1);
 
         Thread.sleep(100);
         Trade trade = engine.match(incomingOrder, orderBook.bestLevel(restingOrder1.getSide()).get());

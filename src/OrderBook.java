@@ -2,24 +2,27 @@ import jdk.jfr.Description;
 
 import java.util.*;
 
-// For cancel/update - use HashMap<Long, Order> can be used.
-
-
 public class OrderBook {
     private final TreeMap<Long, PriceLevel> bids;
     private final TreeMap<Long, PriceLevel> asks;
+    private final HashMap<Long, OrderNode> orderMap;
 
     public OrderBook() {
         this.bids = new TreeMap<>(Comparator.reverseOrder());
         this.asks = new TreeMap<>();
+        this.orderMap = new HashMap<>();
     }
 
-    public void add(Order order) {
-        long price = order.getPriceTicks();
+    public void addOrderToBook(Order order) {
+        long price = order.getPrice();
+        long orderId = order.getOrderId();
         PriceLevel pl;
 
         if (order.getRemainingQuantity() <= 0) {
-            throw new IllegalArgumentException("Cannot add an order with zero remaining quantity.");
+            throw new IllegalArgumentException("Cannot add an order with zero or less remaining quantity.");
+        }
+        if (orderMap.containsKey(orderId)) {
+            throw new IllegalStateException("Illegal State: Duplicate Order ID");
         }
 
         if (order.getSide() == Side.BUY) {
@@ -28,7 +31,24 @@ public class OrderBook {
         else {
             pl = asks.computeIfAbsent(price, PriceLevel::new);
         }
-        pl.addOrder(order);
+        OrderNode orderNode = pl.addOrder(order);
+        orderMap.put(orderId, orderNode);
+    }
+
+    void removeOrderFromBook(long orderId) {
+
+        OrderNode orderNode = orderMap.get(orderId);
+        if (orderNode == null) {
+            throw new IllegalStateException("Illegal State: resting order is not in id map");
+        }
+
+        Order order = orderNode.order;
+        PriceLevel pl = orderNode.level;
+        pl.unlink(orderNode);
+        orderMap.remove(orderId);
+        if (pl.isFullyConsumed()) {
+            removePriceLevel(pl, order.getSide());
+        }
     }
 
     public Optional<PriceLevel> bestBid() {
@@ -60,36 +80,55 @@ public class OrderBook {
         return pl.map(PriceLevel::getTotalVolume).orElse(0L);
     }
 
-    public void removePriceLevel(Side side) {
+    private void removePriceLevel(PriceLevel priceLevel, Side side) {
 
+        long price = priceLevel.getPrice();
         PriceLevel pl;
 
         if (side == Side.BUY) {
 
             if (bids.isEmpty()) {
-                throw new IllegalStateException("The price-level is empty.");
+                throw new IllegalStateException("Illegal Request: The BUY side is empty. Cannot delete.");
             }
-            pl = bids.firstEntry().getValue();
-
-            if (!pl.isFullyConsumed()) {
-                throw new IllegalStateException("Price-level is not empty.");
+            if (!bids.containsKey(price)) {
+                throw new IllegalStateException("Illegal State: Remove called on absent price level");
+            }
+            if (!priceLevel.isFullyConsumed()) {
+                throw new IllegalStateException("Illegal Request: Price-level is not empty.");
             }
 
-            bids.remove(pl.getPrice());
+            pl = bids.remove(price);
         }
         else {
 
             if (asks.isEmpty()) {
-                throw new IllegalStateException("The price-level is empty.");
+                throw new IllegalStateException("Illegal Request: The SELL side is empty. Cannot delete.");
             }
-            pl = asks.firstEntry().getValue();
-
-            if (!pl.isFullyConsumed()) {
-                throw new IllegalStateException("Price Level is not empty.");
+            if (!asks.containsKey(price)) {
+                throw new IllegalStateException("Illegal State: Remove called on absent price level");
+            }
+            if (!priceLevel.isFullyConsumed()) {
+                throw new IllegalStateException("Illegal Request: Price Level is not empty.");
             }
 
-            asks.remove(pl.getPrice());
+            pl = asks.remove(price);
         }
+        if (pl != priceLevel) {
+            throw new IllegalStateException("Illegal Action/State: Removed the wrong price level.");
+        }
+    }
+
+    public CancelResult cancel(long orderId) {
+
+        OrderNode orderNode = orderMap.get(orderId);
+        if (orderNode == null) {
+            return new CancelResult(CancelStatus.UNKNOWN_ORDER, 0);
+        }
+
+        long cancelledQuantity = orderNode.order.getRemainingQuantity();
+        removeOrderFromBook(orderId);
+
+        return new CancelResult(CancelStatus.CANCELLED, cancelledQuantity);
     }
 
     public long getNoOfBids() {
@@ -99,4 +138,10 @@ public class OrderBook {
     public long getNoOfAsks() {
         return asks.size();
     }
+
+    
+    // For testing.
+
+    boolean containsOrder(long orderId) { return orderMap.containsKey(orderId); }
+
 }

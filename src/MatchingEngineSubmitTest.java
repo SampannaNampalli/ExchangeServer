@@ -199,7 +199,7 @@ class MatchingEngineSubmitTest {
         assertTrue(orderBook.bestBid().isEmpty());
 
         // The same ask price remains.
-        assertEquals(restingOrder.getPriceTicks(), orderBook.bestAsk().get().getPrice());
+        assertEquals(restingOrder.getPrice(), orderBook.bestAsk().get().getPrice());
     }
 
     @Test

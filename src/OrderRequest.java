@@ -12,12 +12,14 @@ public class OrderRequest {
         if (price <= 0) {
             throw new IllegalArgumentException("Price must be positive");
         }
-        if (price == Long.MAX_VALUE) {
+        if (price > Order.MAX_PRICE) {
             throw new IllegalArgumentException("INVALID. Order priced at Long.MAX_VALUE.");
         }
-        // Quantity depends on the value of a single share? So, Long.MAX_VALUE may not be the limit.
-        if (quantity == Long.MAX_VALUE) {
+        if (quantity > Order.MAX_ORDER_QUANTITY) {
             throw new IllegalArgumentException("INVALID. Order quantity is Long.MAX_VALUE.");
+        }
+        if (quantity <= 0) {
+            throw new IllegalArgumentException("ILLEGAL REQUEST: Order quantity must be positive.");
         }
 
         this.side = side;

@@ -1,6 +1,8 @@
 Later, when we start caring about reproducibility and deterministic testing,
 we'll probably inject a Clock (or another time source) so tests don't depend on wall-clock time.
 
-Separate:   Incoming order timestamp, Trade timestamp - as there will be a few microseconds difference between
+1. Separate:   Incoming order timestamp, Trade timestamp - as there will be a few microseconds difference between
 both.
-Maybe add sequence number in addition to ID.
+2. Maybe add sequence number in addition to ID.
+3. Use ValidatedOrder at the time of OrderRequest validation and pass it down to the concerning layers and
+methods.
