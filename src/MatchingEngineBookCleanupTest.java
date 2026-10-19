@@ -27,14 +27,14 @@ class MatchingEngineBookCleanupTest {
     }
 
     static Order order(long id, Side side, long price, long quantity) {
-        return new Order(id, side, price, quantity, Instant.EPOCH);
+        return new Order(id, side, price, quantity, Instant.EPOCH, OrderType.LIMIT);
     }
 
     @Test
     void exactMatchRemovesRestingOrderAndItsLevel() {
         orderBook.addOrderToBook(order(1, Side.SELL, 100, 10));
 
-        List<Trade> trades = engine.submit(order(2, Side.BUY, 100, 10));
+        List<Trade> trades = engine.submit(order(2, Side.BUY, 100, 10)).trades();
 
         assertEquals(1, trades.size());
         assertFalse(orderBook.containsOrder(1));
@@ -91,7 +91,7 @@ class MatchingEngineBookCleanupTest {
         orderBook.addOrderToBook(order(3, Side.SELL, 102, 5));
 
         // Limit 101: drains 100 and 101, does not cross 102, rests the remaining 2 as a bid at 101.
-        List<Trade> trades = engine.submit(order(4, Side.BUY, 101, 12));
+        List<Trade> trades = engine.submit(order(4, Side.BUY, 101, 12)).trades();
 
         assertEquals(2, trades.size());
         assertEquals(100, trades.get(0).getPrice());
@@ -113,7 +113,7 @@ class MatchingEngineBookCleanupTest {
         orderBook.addOrderToBook(order(2, Side.SELL, 100, 5));
         orderBook.cancel(1);
 
-        List<Trade> trades = engine.submit(order(3, Side.BUY, 100, 5));
+        List<Trade> trades = engine.submit(order(3, Side.BUY, 100, 5)).trades();
 
         assertEquals(1, trades.size());
         assertEquals(2, trades.get(0).getSellOrderId());
@@ -126,7 +126,7 @@ class MatchingEngineBookCleanupTest {
         orderBook.addOrderToBook(order(1, Side.BUY, 100, 5));
         orderBook.addOrderToBook(order(2, Side.BUY, 99, 5));
 
-        List<Trade> trades = engine.submit(order(3, Side.SELL, 99, 10));
+        List<Trade> trades = engine.submit(order(3, Side.SELL, 99, 10)).trades();
 
         assertEquals(2, trades.size());
         assertEquals(1, trades.get(0).getBuyOrderId());

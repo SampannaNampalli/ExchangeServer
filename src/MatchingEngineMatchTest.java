@@ -25,8 +25,8 @@ class MatchingEngineMatchTest {
     // 1. Tests on Trade quantity
     @Test
     void incomingOrderLargerThanRestingOrder() {
-        Order restingOrder = new Order(1, Side.SELL, 100, 40, Instant.now());
-        Order incomingOrder = new Order(2, Side.BUY, 105, 70, Instant.now());
+        Order restingOrder = new Order(1, Side.SELL, 100, 40, Instant.now(), OrderType.LIMIT);
+        Order incomingOrder = new Order(2, Side.BUY, 105, 70, Instant.now(), OrderType.LIMIT);
 
         // Insert the restingOrder into the OrderBook.
         orderBook.addOrderToBook(restingOrder);
@@ -41,8 +41,8 @@ class MatchingEngineMatchTest {
 
     @Test
     void incomingOrderSmallerThanRestingOrder() {
-        Order restingOrder = new Order(1, Side.SELL, 100, 100, Instant.now());
-        Order incomingOrder = new Order(2, Side.BUY, 105, 30, Instant.now());
+        Order restingOrder = new Order(1, Side.SELL, 100, 100, Instant.now(), OrderType.LIMIT);
+        Order incomingOrder = new Order(2, Side.BUY, 105, 30, Instant.now(), OrderType.LIMIT);
 
         // Insert the restingOrder into the OrderBook.
         orderBook.addOrderToBook(restingOrder);
@@ -56,8 +56,8 @@ class MatchingEngineMatchTest {
 
     @Test
     void incomingOrderEqualToRestingOrder() {
-        Order restingOrder = new Order(1, Side.SELL, 100, 50, Instant.now());
-        Order incomingOrder = new Order(2, Side.BUY, 105, 50, Instant.now());
+        Order restingOrder = new Order(1, Side.SELL, 100, 50, Instant.now(), OrderType.LIMIT);
+        Order incomingOrder = new Order(2, Side.BUY, 105, 50, Instant.now(), OrderType.LIMIT);
 
         // Insert the restingOrder into the OrderBook.
         orderBook.addOrderToBook(restingOrder);
@@ -73,8 +73,8 @@ class MatchingEngineMatchTest {
 
     @Test
     void tradeExecutesAtRestingSellPrice() {
-        Order restingOrder = new Order(1, Side.SELL, 100, 40, Instant.now());
-        Order incomingOrder = new Order(2, Side.BUY, 150, 70, Instant.now());
+        Order restingOrder = new Order(1, Side.SELL, 100, 40, Instant.now(), OrderType.LIMIT);
+        Order incomingOrder = new Order(2, Side.BUY, 150, 70, Instant.now(), OrderType.LIMIT);
 
         // Insert the restingOrder into the OrderBook.
         orderBook.addOrderToBook(restingOrder);
@@ -87,8 +87,8 @@ class MatchingEngineMatchTest {
 
     @Test
     void tradeExecutesAtRestingBuyPrice() {
-        Order restingOrder = new Order(1, Side.BUY, 120, 40, Instant.now());
-        Order incomingOrder = new Order(2, Side.SELL, 100, 70, Instant.now());
+        Order restingOrder = new Order(1, Side.BUY, 120, 40, Instant.now(), OrderType.LIMIT);
+        Order incomingOrder = new Order(2, Side.SELL, 100, 70, Instant.now(), OrderType.LIMIT);
 
         // Insert the restingOrder into the OrderBook.
         orderBook.addOrderToBook(restingOrder);
@@ -101,8 +101,8 @@ class MatchingEngineMatchTest {
     // 3. Tests on Order IDs.
     @Test
     void incomingBuyGetsBuyOrderId() {
-        Order restingOrder = new Order(1, Side.SELL, 120, 40, Instant.now());
-        Order incomingOrder = new Order(2, Side.BUY, 100, 70, Instant.now());
+        Order restingOrder = new Order(1, Side.SELL, 120, 40, Instant.now(), OrderType.LIMIT);
+        Order incomingOrder = new Order(2, Side.BUY, 100, 70, Instant.now(), OrderType.LIMIT);
 
         // Insert the restingOrder into the OrderBook.
         orderBook.addOrderToBook(restingOrder);
@@ -114,8 +114,8 @@ class MatchingEngineMatchTest {
 
     @Test
     void incomingSellGetsSellOrderId() {
-        Order restingOrder = new Order(1, Side.BUY, 120, 40, Instant.now());
-        Order incomingOrder = new Order(2, Side.SELL, 100, 70, Instant.now());
+        Order restingOrder = new Order(1, Side.BUY, 120, 40, Instant.now(), OrderType.LIMIT);
+        Order incomingOrder = new Order(2, Side.SELL, 100, 70, Instant.now(), OrderType.LIMIT);
 
         // Insert the restingOrder into the OrderBook.
         orderBook.addOrderToBook(restingOrder);
@@ -128,8 +128,8 @@ class MatchingEngineMatchTest {
     // 4. Tests on Incoming Order Updates.
     @Test
     void largerIncomingRemainsPartiallyFilled() {
-        Order restingOrder = new Order(1, Side.SELL, 120, 40, Instant.now());
-        Order incomingOrder = new Order(2, Side.BUY, 100, 70, Instant.now());
+        Order restingOrder = new Order(1, Side.SELL, 120, 40, Instant.now(), OrderType.LIMIT);
+        Order incomingOrder = new Order(2, Side.BUY, 100, 70, Instant.now(), OrderType.LIMIT);
 
         // Insert the restingOrder into the OrderBook.
         orderBook.addOrderToBook(restingOrder);
@@ -140,8 +140,8 @@ class MatchingEngineMatchTest {
 
     @Test
     void incomingIsCompletelyFilled() {
-        Order restingOrder = new Order(1, Side.SELL, 120, 40, Instant.now());
-        Order incomingOrder = new Order(2, Side.BUY, 100, 40, Instant.now());
+        Order restingOrder = new Order(1, Side.SELL, 120, 40, Instant.now(), OrderType.LIMIT);
+        Order incomingOrder = new Order(2, Side.BUY, 100, 40, Instant.now(), OrderType.LIMIT);
 
         // Insert the restingOrder into the OrderBook.
         orderBook.addOrderToBook(restingOrder);
@@ -153,8 +153,8 @@ class MatchingEngineMatchTest {
     // 5. Tests on Resting Order Updates
     @Test
     void restingIsCompletelyConsumed() {
-        Order restingOrder = new Order(1, Side.SELL, 120, 40, Instant.now());
-        Order incomingOrder = new Order(2, Side.BUY, 100, 70, Instant.now());
+        Order restingOrder = new Order(1, Side.SELL, 120, 40, Instant.now(), OrderType.LIMIT);
+        Order incomingOrder = new Order(2, Side.BUY, 100, 70, Instant.now(), OrderType.LIMIT);
 
         // Insert the restingOrder into the OrderBook.
         orderBook.addOrderToBook(restingOrder);
@@ -165,8 +165,8 @@ class MatchingEngineMatchTest {
 
     @Test
     void largerRestingRemainsPartiallyFilled() {
-        Order restingOrder = new Order(1, Side.SELL, 120, 90, Instant.now());
-        Order incomingOrder = new Order(2, Side.BUY, 100, 70, Instant.now());
+        Order restingOrder = new Order(1, Side.SELL, 120, 90, Instant.now(), OrderType.LIMIT);
+        Order incomingOrder = new Order(2, Side.BUY, 100, 70, Instant.now(), OrderType.LIMIT);
 
         // Insert the restingOrder into the OrderBook.
         orderBook.addOrderToBook(restingOrder);
@@ -178,8 +178,8 @@ class MatchingEngineMatchTest {
     // 6. Tests on PriceLevel encapsulation.
     @Test
     void priceLevelIsCompletelyConsumed() {
-        Order restingOrder = new Order(1, Side.SELL, 120, 40, Instant.now());
-        Order incomingOrder = new Order(2, Side.BUY, 100, 70, Instant.now());
+        Order restingOrder = new Order(1, Side.SELL, 120, 40, Instant.now(), OrderType.LIMIT);
+        Order incomingOrder = new Order(2, Side.BUY, 100, 70, Instant.now(), OrderType.LIMIT);
 
         // Insert the restingOrder into the OrderBook.
         orderBook.addOrderToBook(restingOrder);
@@ -191,9 +191,9 @@ class MatchingEngineMatchTest {
 
     @Test
     void priceLevelWithTwoOrdersIsPartiallyConsumedWithHeadOrderRemoved() {
-        Order restingOrder1 = new Order(1, Side.SELL, 100, 40, Instant.now());
-        Order restingOrder2 = new Order(2, Side.SELL, 100, 70, Instant.now());
-        Order incomingOrder = new Order(2, Side.BUY, 105, 70, Instant.now());
+        Order restingOrder1 = new Order(1, Side.SELL, 100, 40, Instant.now(), OrderType.LIMIT);
+        Order restingOrder2 = new Order(2, Side.SELL, 100, 70, Instant.now(), OrderType.LIMIT);
+        Order incomingOrder = new Order(2, Side.BUY, 105, 70, Instant.now(), OrderType.LIMIT);
 
         // Insert the restingOrder into the OrderBook.
         orderBook.addOrderToBook(restingOrder1);
@@ -209,9 +209,9 @@ class MatchingEngineMatchTest {
 
     @Test
     void priceLevelWithTwoOrdersIsPartiallyConsumedWithoutHeadOrderRemoved() {
-        Order restingOrder1 = new Order(1, Side.SELL, 100, 40, Instant.now());
-        Order restingOrder2 = new Order(2, Side.SELL, 100, 70, Instant.now());
-        Order incomingOrder = new Order(2, Side.BUY, 105, 20, Instant.now());
+        Order restingOrder1 = new Order(1, Side.SELL, 100, 40, Instant.now(), OrderType.LIMIT);
+        Order restingOrder2 = new Order(2, Side.SELL, 100, 70, Instant.now(), OrderType.LIMIT);
+        Order incomingOrder = new Order(2, Side.BUY, 105, 20, Instant.now(), OrderType.LIMIT);
 
         // Insert the restingOrder into the OrderBook.
         orderBook.addOrderToBook(restingOrder1);
@@ -226,9 +226,9 @@ class MatchingEngineMatchTest {
 
     @Test
     void volumeOfPriceLevelWith2Orders() {
-        Order restingOrder1 = new Order(1, Side.SELL, 100, 30, Instant.now());
-        Order restingOrder2 = new Order(2, Side.SELL, 100, 40, Instant.now());
-        Order incomingOrder = new Order(2, Side.BUY, 105, 20, Instant.now());
+        Order restingOrder1 = new Order(1, Side.SELL, 100, 30, Instant.now(), OrderType.LIMIT);
+        Order restingOrder2 = new Order(2, Side.SELL, 100, 40, Instant.now(), OrderType.LIMIT);
+        Order incomingOrder = new Order(2, Side.BUY, 105, 20, Instant.now(), OrderType.LIMIT);
 
         // Insert the restingOrder into the OrderBook.
         orderBook.addOrderToBook(restingOrder1);
@@ -242,9 +242,9 @@ class MatchingEngineMatchTest {
     // 7. Tests on FIFO ordering of Orders.
     @Test
     void orderingIsConfirmedToBeFIFO() {
-        Order restingOrder1 = new Order(1, Side.SELL, 100, 10, Instant.now());
-        Order restingOrder2 = new Order(2, Side.SELL, 100, 20, Instant.now());
-        Order incomingOrder = new Order(2, Side.BUY, 105, 15, Instant.now());
+        Order restingOrder1 = new Order(1, Side.SELL, 100, 10, Instant.now(), OrderType.LIMIT);
+        Order restingOrder2 = new Order(2, Side.SELL, 100, 20, Instant.now(), OrderType.LIMIT);
+        Order incomingOrder = new Order(2, Side.BUY, 105, 15, Instant.now(), OrderType.LIMIT);
 
         // Insert the restingOrder into the OrderBook.
         orderBook.addOrderToBook(restingOrder1);
@@ -261,9 +261,9 @@ class MatchingEngineMatchTest {
 
     @Test
     void incomingOrderTimeStampIsLaterThanRestingOrder() throws InterruptedException {
-        Order restingOrder1 = new Order(1, Side.SELL, 100, 40, Instant.now());
+        Order restingOrder1 = new Order(1, Side.SELL, 100, 40, Instant.now(), OrderType.LIMIT);
         Thread.sleep(100);
-        Order incomingOrder = new Order(2, Side.BUY, 105, 70, Instant.now());
+        Order incomingOrder = new Order(2, Side.BUY, 105, 70, Instant.now(), OrderType.LIMIT);
 
         // Insert the restingOrder into the OrderBook.
         orderBook.addOrderToBook(restingOrder1);
@@ -274,8 +274,8 @@ class MatchingEngineMatchTest {
 
     @Test
     void timeStampsOfOrdersIsEarlierThanTrade() throws  InterruptedException{
-        Order restingOrder1 = new Order(1, Side.SELL, 100, 40, Instant.now());
-        Order incomingOrder = new Order(2, Side.BUY, 105, 70, Instant.now());
+        Order restingOrder1 = new Order(1, Side.SELL, 100, 40, Instant.now(), OrderType.LIMIT);
+        Order incomingOrder = new Order(2, Side.BUY, 105, 70, Instant.now(), OrderType.LIMIT);
 
         // Insert the restingOrder into the OrderBook.
         orderBook.addOrderToBook(restingOrder1);

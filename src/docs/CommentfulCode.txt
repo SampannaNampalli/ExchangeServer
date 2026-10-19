@@ -1,0 +1,303 @@
+MatchingEngine.java
+
+import java.util.*;
+import java.time.Instant;
+
+/*
+Other:
+1. Do not get confused between deriving a state and and passing a derived state.
+ */
+
+public class MatchingEngine {
+    private final OrderBook orderBook;
+
+    private long nextOrderId = 1;
+
+    // Maybe pass symbol along with OrderBook?
+    public MatchingEngine(OrderBook orderBook) {
+        this.orderBook = orderBook;
+    }
+
+    // Keeping it public only for testing. Make it private after testing.
+    // Create an incoming order from a request and return it.
+    public Order createOrder(Side side, long price, long quantity) {
+
+        return new Order(nextOrderId++, side, price, quantity, Instant.now());
+    }
+
+    // Make private after testing.
+    Order createOrder(OrderRequest orderRequest) {
+
+        return createOrder(orderRequest.getSide(), orderRequest.getPrice(), orderRequest.getQuantity());
+    }
+
+    // Submit the incoming order for matching.
+    public List<Trade> submit(OrderRequest orderRequest) {
+        
+        return process(createOrder(orderRequest));
+    }
+
+    // Open only for testing. Specially to query on the status of a specific order which will not
+    // be accessible through any other means. Remove afterward.
+    public List<Trade> submit(Order incomingOrder) {
+
+        return process(incomingOrder);
+    }
+
+    /*
+
+    Functional Requirements:
+    1. Check whether the incoming Order crosses a resting order.
+    2. Match Trade(s) as long as Orders cross.
+    4. Insert the incoming order into the Order-Book if it still has volume left.
+    5. Fill Orders according to the volume of a matched Trade.
+    6. Determine resting side --> Saves from having to derive it twice or more in the methods to be called.
+
+    Arguments: The incoming Order.
+
+    Returns: A List of Trade objects.
+
+    Stopping conditions:
+    a. Order(s) are completely filled.
+    1. The incoming order is completely filled.
+    2. Both are completely filled.
+
+    b. Orders do not cross.
+    1. The price level becomes empty --> ie. After crossing a resting order(s), the incoming order
+    does not cross the following existing order.
+    2. The price level is empty at the event of arrival of the incoming order.
+    3. The prices do not cross.
+
+    Logic:
+    1. Quantity of the Trade - The Trade quantity depends on the Trade which has lesser quantity.
+    2. Price of the Trade - The Trade gets executed at the resting order's price. ( I am not sure why this is the case. Is this a design decision?)
+    3. Action after an Order is completely consumed -
+    If the head Order of the resting Side is consumed, then:
+        a. The Order must be removed from the Price-Level
+        b. The volume of the Price-Level must be decreased appropriately.
+
+     */
+
+    List<Trade> process(Order incomingOrder) {
+        List<Trade> trades = new ArrayList<>();
+        Side restingSide = (incomingOrder.getSide() == Side.BUY) ? Side.SELL : Side.BUY;
+
+        Optional<PriceLevel> restingLevelOpt;
+        while (incomingOrder.getRemainingQuantity() > 0
+                && (restingLevelOpt = orderBook.bestLevel(restingSide)).isPresent()
+                && crosses(incomingOrder, restingLevelOpt.get())) {
+
+            Trade trade = match(incomingOrder, restingLevelOpt.get());
+            trades.add(trade);
+        }
+
+        if (incomingOrder.getRemainingQuantity() > 0) {
+            orderBook.addOrderToBook(incomingOrder);
+        }
+
+        return trades;
+    }
+
+    /*
+
+    Functional Requirement:
+    1. Create and return a Trade object.
+    2. Ensure proper data handling for efficient usage in the future.
+    3. Fill Orders according to the volume of a matched Trade.
+    4. Remove the head-order of a price-level if it has been consumed.
+    5. Remove the price-level if it has been consumed and there are no orders left.
+
+
+    Arguments: The incoming order, the resting Side.
+
+    Returns:
+    A Trade object.
+
+    Objects/Memory that changed during the execution:
+    1. Current head-order of the current best price-level.
+    2. The price-level if it becomes empty --> The resting side(queue) of the orderbook.
+    3. The incoming trade quantity.
+    4. The side of the orderbook that corresponds to the incoming order, when there are no orders on the
+    resting side left, the incoming order must be added to the orderbook.
+    5. Creation of a new Trade object.
+
+   Future concerns - The trade log
+
+     */
+
+    Trade match(Order incomingOrder, PriceLevel restingPL) {
+
+        // Protect empty restingPL.
+
+        // Store reference of the resting order and order IDs.
+        Order restingOrder = restingPL.peekFirstOrder();
+        long buyOrderId, sellOrderId;
+
+        // Update the resting order.
+        // quantity is calculated at the source - fillHeadOrder() method.
+        long quantity = restingPL.fillHeadOrder(incomingOrder.getRemainingQuantity());
+
+        // Update the incoming order.
+        incomingOrder.fill(quantity);
+
+        if (restingOrder.getRemainingQuantity() == 0) {
+            orderBook.removeOrderFromBook(restingOrder.getOrderId());
+        }
+
+        // Identify BUY and SELL order.
+        if (incomingOrder.getSide() == Side.BUY) {
+            buyOrderId = incomingOrder.getOrderId();
+            sellOrderId = restingOrder.getOrderId();
+        }
+        else {
+            buyOrderId = restingOrder.getOrderId();
+            sellOrderId = incomingOrder.getOrderId();
+        }
+
+        // Construct the Trade.
+        Trade trade = new Trade(quantity, restingPL.getPrice(), buyOrderId, sellOrderId, Instant.now());
+
+        // Return the Trade object.
+        return trade;
+    }
+
+    /*
+
+    Functional Requirements:
+    1. Handoff the order to the core function.
+    2. Unbox order into fields that are needed for matching.
+    3. Determine the resting side --> May be removed.
+
+    Arguments: The incoming Order.
+
+    Returns: A boolean/predicate.
+
+    TradeOffs/Assumptions:
+    1. The resting side is derived again and not passed as an argument from the submit method to protect
+    against improper argument passing. --> Deriving an extra time to save against a potential error - crossing
+    orders belonging to the same side.
+
+     */
+    boolean crosses(Order incomingOrder, PriceLevel restingPL) {
+
+        Side restingSide = (incomingOrder.getSide() == Side.BUY) ? Side.SELL : Side.BUY;
+
+        return crosses(incomingOrder.getPrice(), restingPL.getPrice(), restingSide);
+    }
+
+    /*
+
+    Functional Requirements:
+    1. Determine whether two prices cross.
+
+    Arguments:
+    1. The price of the incoming order
+    2. The price of the resting order
+    3. The side, required for proper logic matching.
+
+    Returns: A boolean.
+
+     */
+    boolean crosses(long incomingPrice, long restingPrice, Side restingSide) {
+
+        if (restingSide == Side.BUY) {
+            return (incomingPrice <= restingPrice);
+        }
+        else {
+            return (incomingPrice >= restingPrice);
+        }
+    }
+}
+
+/*
+
+public class MatchingEngine {
+    private final OrderBook orderBook;
+
+    private long nextOrderId = 1;
+
+    public MatchingEngine(OrderBook orderBook) {
+        this.orderBook = orderBook;
+    }
+
+    // Create an incoming order from a request.
+    public Optional<List<Trade>> createOrder(Side side, long price, long quantity) {
+        Order incomingOrder = new Order(nextOrderId++, side, price, quantity, Instant.now());
+        return Optional.of(submit(incomingOrder));
+    }
+
+    List<Trade> submit(Order incomingOrder) {
+        List<Trade> trades = new ArrayList<>();
+        Side oppositeSide = (incomingOrder.getSide() == Side.BUY) ? Side.SELL : Side.BUY;
+
+        Optional<PriceLevel> oppositeLevelOpt;
+        while (incomingOrder.getRemainingQuantity() > 0
+                && (oppositeLevelOpt = orderBook.bestLevel(oppositeSide)).isPresent()
+                && crosses(incomingOrder, oppositeLevelOpt.get())) {
+            Trade trade = match(incomingOrder, oppositeLevelOpt.get());
+            trades.add(trade);
+
+            if (oppositeLevelOpt.get().isFullyConsumed()) {
+                orderBook.removePriceLevel(oppositeSide);
+            }
+        }
+
+        if (incomingOrder.getRemainingQuantity() > 0) {
+            orderBook.add(incomingOrder);
+        }
+
+        return trades;
+    }
+
+
+    Trade match(Order incomingOrder, PriceLevel oppositePL) {
+
+        // Store reference of the resting order and order IDs.
+        Order oppositeOrder = oppositePL.peekFirstOrder();
+        long buyOrderId, sellOrderId;
+
+        if (incomingOrder.getSide() == Side.BUY) {
+            buyOrderId = incomingOrder.getOrderId();
+            sellOrderId = oppositeOrder.getOrderId();
+        }
+        else {
+            buyOrderId = oppositeOrder.getOrderId();
+            sellOrderId = incomingOrder.getOrderId();
+        }
+
+        // Update the resting order.
+        // quantity is calculated at the source - fillHeadOrder() method.
+        long quantity = oppositePL.fillHeadOrder(incomingOrder.getRemainingQuantity());
+
+        // Update the incoming order.
+        incomingOrder.fill(quantity);
+
+        // Construct the Trade.
+        Trade trade = new Trade(quantity, oppositePL.getPrice(), buyOrderId, sellOrderId, Instant.now());
+
+        // Return the Trade object.
+        return trade;
+    }
+
+    boolean crosses(Order incomingOrder, PriceLevel oppositePL) {
+
+        Side oppositeSide = (incomingOrder.getSide() == Side.BUY) ? Side.SELL : Side.BUY;
+
+        return crosses(incomingOrder.getPriceTicks(), oppositePL.getPrice(), oppositeSide);
+    }
+
+    boolean crosses(long incomingPrice, long oppositePrice, Side oppositeSide) {
+
+        if (oppositeSide == Side.BUY) {
+            return (incomingPrice <= oppositePrice);
+        }
+        else {
+            return (incomingPrice >= oppositePrice);
+        }
+    }
+}
+
+I am not sure of real-world anchors like share counts of actual large-cap trades, lot sizes, something concrete, etc... Can you elaborate on how these would affect our project, or how these affect existing real-world exchanges?
+
+ */
+

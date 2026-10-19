@@ -49,7 +49,7 @@ class MatchingEngineSubmitTest {
     void incomingBuyOnEmptyBook() {
         OrderRequest orderRequest = new OrderRequest(Side.BUY, 100, 50);
 
-        List<Trade> trades = engine.submit(orderRequest);
+        List<Trade> trades = engine.submit(orderRequest).trades();
 
         assertTrue(trades.isEmpty());
         assertEquals(1, orderBook.bestBid().get().getNoOfOrders());
@@ -67,7 +67,7 @@ class MatchingEngineSubmitTest {
 
         Order incomingOrder = engine.createOrder(incomingOrderRequest);
 
-        List<Trade> trades = engine.submit(incomingOrder);
+        List<Trade> trades = engine.submit(incomingOrder).trades();
 
         // Exactly one trade is executed.
         assertEquals(1, trades.size());
@@ -100,7 +100,7 @@ class MatchingEngineSubmitTest {
 
         Order incomingOrder = engine.createOrder(incomingOrderRequest);
 
-        List<Trade> trades = engine.submit(incomingOrder);
+        List<Trade> trades = engine.submit(incomingOrder).trades();
 
         // Size of trades.
         assertEquals(0, trades.size());
@@ -127,7 +127,7 @@ class MatchingEngineSubmitTest {
 
         Order incomingOrder = engine.createOrder(incomingOrderRequest);
 
-        List<Trade> trades = engine.submit(incomingOrder);
+        List<Trade> trades = engine.submit(incomingOrder).trades();
 
         // Size of trades.
         assertEquals(1, trades.size());
@@ -155,7 +155,7 @@ class MatchingEngineSubmitTest {
 
         Order incomingOrder = engine.createOrder(incomingOrderRequest);
 
-        List<Trade> trades = engine.submit(incomingOrder);
+        List<Trade> trades = engine.submit(incomingOrder).trades();
 
         // Exactly one trade is executed.
         assertEquals(1, trades.size());
@@ -187,7 +187,7 @@ class MatchingEngineSubmitTest {
         engine.submit(restingOrder);
 
         // Directly submitting the incoming order for this test since no direct checking is performed.
-        List<Trade> trades = engine.submit(incomingOrderRequest);
+        List<Trade> trades = engine.submit(incomingOrderRequest).trades();
 
         // Exactly one trade is executed.
         assertEquals(1, trades.size());
@@ -217,7 +217,7 @@ class MatchingEngineSubmitTest {
 
         Order incomingOrder = engine.createOrder(incomingOrderRequest);
 
-        List<Trade> trades = engine.submit(incomingOrder);
+        List<Trade> trades = engine.submit(incomingOrder).trades();
 
         // IDs of orders.
         assertEquals(1, trades.get(0).getSellOrderId());
@@ -257,7 +257,7 @@ class MatchingEngineSubmitTest {
 
         Order incomingOrder = engine.createOrder(incomingOrderRequest);
 
-        List<Trade> trades = engine.submit(incomingOrder);
+        List<Trade> trades = engine.submit(incomingOrder).trades();
 
         // Size of trades.
         assertEquals(1, trades.size());
@@ -285,7 +285,7 @@ class MatchingEngineSubmitTest {
 
         Order incomingOrder = engine.createOrder(incomingOrderRequest);
 
-        List<Trade> trades = engine.submit(incomingOrder);
+        List<Trade> trades = engine.submit(incomingOrder).trades();
 
         // Size of trades.
         assertEquals(2, trades.size());

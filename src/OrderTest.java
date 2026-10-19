@@ -19,7 +19,7 @@ Limits under test:
 class OrderTest {
 
     static Order order(long id, long price, long quantity) {
-        return new Order(id, Side.BUY, price, quantity, Instant.EPOCH);
+        return new Order(id, Side.BUY, price, quantity, Instant.EPOCH, OrderType.LIMIT);
     }
 
     @Nested

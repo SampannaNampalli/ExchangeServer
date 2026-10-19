@@ -9,8 +9,9 @@ public class Order {
     public static final long MAX_ORDER_QUANTITY = 1000000000L;
     public static final long MAX_PRICE = Long.MAX_VALUE / MAX_ORDER_QUANTITY;
     private long filledQuantity;
+    private final OrderType orderType;
 
-    public Order(long orderId, Side side, long price, long originalQuantity, Instant timestamp) {
+    public Order(long orderId, Side side, long price, long originalQuantity, Instant timestamp, OrderType orderType) {
 
         if (side != Side.BUY && side != Side.SELL) {
             throw new IllegalArgumentException("Illegal Request: Select a valid Side.");
@@ -31,12 +32,20 @@ public class Order {
             throw new IllegalArgumentException("INVALID. Order quantity is not allowed. Try placing an order" +
                     "of smaller volume.");
         }
+        if (orderType == null) {
+            throw new IllegalArgumentException("ILLEGAL REQUEST: Invalid order type");
+        }
+        // temporary.
+        if (orderType != OrderType.LIMIT && orderType != OrderType.IOC) {
+            throw new IllegalArgumentException("ILLEGAL REQUEST: Only LIMIT and IOC order types are accepted for now.");
+        }
 
         this.orderId = orderId;
         this.side = side;
         this.price = price;
         this.originalQuantity = originalQuantity;
         this.timestamp = timestamp;
+        this.orderType = orderType;
     }
 
     public long getOrderId() {
@@ -61,6 +70,10 @@ public class Order {
 
     public long getFilledQuantity() {
         return filledQuantity;
+    }
+
+    public OrderType getOrderType() {
+        return orderType;
     }
 
     public void fill(long quantity) {

@@ -1,0 +1,564 @@
+Exchange Server — Project Spec & Progress Log (v3)
+
+Continuation of ExchangeServer_Spec_v2.md.
+
+This version incorporates the completed MatchingEngine, API redesign, and JUnit test suite. Upload this file in a future ChatGPT session to resume development from exactly this point.
+
+Goal
+
+Build a production-quality stock exchange / matching engine in Java.
+
+Development philosophy:
+
+Correctness before optimization.
+Single-threaded deterministic engine first.
+Comprehensive testing before new features.
+Add production features incrementally (cancellation, modification, persistence, networking, concurrency, etc.).
+Current Architecture
+ExchangeServer
+
+Side.java
+
+OrderRequest.java
+Order.java
+Trade.java
+
+PriceLevel.java
+OrderBook.java
+
+MatchingEngine.java
+
+Main.java (not yet written)
+Current Domain Model
+Side
+BUY
+SELL
+OrderRequest
+
+Represents the client's request.
+
+Contains
+
+Side side
+long price
+long quantity
+
+This is NOT an order in the matching engine.
+
+It has
+
+no order ID
+no timestamp
+no filled quantity
+
+It exists purely as an API request object.
+
+Order
+
+Internal engine object.
+
+Contains
+
+orderId
+side
+priceTicks
+originalQuantity
+filledQuantity
+timestamp
+
+Mutable only through
+
+fill(...)
+
+Identity is immutable.
+
+Trade
+
+Immutable execution record.
+
+Contains
+
+quantity
+price
+buyOrderId
+sellOrderId
+timestamp
+
+Trade price is always the resting order's price.
+
+PriceLevel
+
+Represents exactly one price.
+
+Internally stores
+
+Deque<Order>
+
+maintaining strict FIFO.
+
+Tracks
+
+totalVolume
+
+noOfOrders
+
+Methods include
+
+addOrder()
+
+peekFirstOrder()
+
+fillHeadOrder()
+
+removeFirstOrder()
+
+isFullyConsumed()
+
+getTotalVolume()
+
+getNoOfOrders()
+OrderBook
+
+Stores
+
+TreeMap<Long, PriceLevel> bids
+TreeMap<Long, PriceLevel> asks
+
+Highest bid first.
+
+Lowest ask first.
+
+Supports
+
+add()
+
+bestBid()
+
+bestAsk()
+
+bestLevel()
+
+removePriceLevel()
+
+getVolume()
+
+getNoOfBids()
+
+getNoOfAsks()
+
+removePriceLevel() has already been redesigned to remove the current best level after verifying it is fully consumed.
+
+Matching Engine
+
+Current public API
+
+submit(OrderRequest)
+
+Workflow
+
+Client
+
+↓
+
+OrderRequest
+
+↓
+
+createOrder()
+
+↓
+
+Order
+
+↓
+
+process()
+
+↓
+
+Trades
+Internal Methods
+createOrder()
+
+Creates an internal Order.
+
+Normally private.
+
+Made public only for unit testing.
+
+process()
+
+Formerly called submit(Order).
+
+Responsibilities
+
+drive matching loop
+repeatedly invoke match()
+remove emptied price levels
+rest remaining quantity
+return trades
+match()
+
+Responsibilities
+
+execute exactly ONE trade
+determine trade quantity
+update resting order
+update incoming order
+create Trade
+return Trade
+
+Does NOT
+
+loop
+remove price levels
+add resting orders
+check price crossing
+crosses()
+
+Pure comparison function.
+
+Responsible ONLY for determining whether
+
+incoming price
+
+crosses
+
+resting price
+
+No validation logic.
+
+Accepted Design Decisions
+Event-driven matching
+
+Matching occurs only when an incoming order arrives.
+
+Price-Time Priority
+
+Priority
+
+Price
+
+↓
+
+Time
+
+FIFO within each price level.
+
+Trade Price
+
+Trade executes at
+
+resting order price
+
+Never the aggressor's price.
+
+Responsibility Separation
+match()
+
+↓
+
+one trade
+process()
+
+↓
+
+entire matching process
+PriceLevel
+
+↓
+
+maintains queue invariants
+OrderBook
+
+↓
+
+maintains book structure
+OrderRequest
+
+API exposes
+
+OrderRequest
+
+instead of
+
+Order
+
+The engine owns
+
+order IDs
+timestamps
+internal state
+
+Clients never create Orders directly.
+
+JUnit Test Coverage
+MatchingEngineCrossesTest
+
+Completed.
+
+Tests
+
+BUY crossing
+
+BUY equal
+
+BUY non-crossing
+
+SELL crossing
+
+SELL equal
+
+SELL non-crossing
+
+Validation deliberately excluded.
+
+MatchingEngineMatchTest
+
+Completed.
+
+Coverage
+
+✓ Trade quantity
+
+✓ Trade price
+
+✓ BUY order IDs
+
+✓ SELL order IDs
+
+✓ Incoming order updates
+
+✓ Resting order updates
+
+✓ PriceLevel volume
+
+✓ FIFO
+
+✓ PriceLevel consumption
+
+MatchingEngineSubmitTest
+
+Completed.
+
+Coverage
+
+✓ Empty book
+
+✓ Exact match
+
+✓ Orders do not cross
+
+✓ Stop when prices no longer cross
+
+✓ Incoming larger
+
+✓ Incoming smaller
+
+✓ Multi-level walk
+
+✓ Resting side becomes empty
+
+✓ FIFO across multiple matches
+
+Current coverage is considered sufficient for Phase 0.
+
+Current Engine Status
+
+Completed
+
+✅ Order creation
+
+✅ OrderBook
+
+✅ PriceLevel
+
+✅ MatchingEngine
+
+✅ Price-time priority
+
+✅ FIFO
+
+✅ Multi-level matching
+
+✅ Comprehensive unit tests
+
+The engine is considered feature-complete for Phase 0.
+
+Current Known Limitations
+
+Currently supports only
+
+Limit Orders
+
+No
+
+Cancel
+
+Modify
+
+IOC
+
+FOK
+
+Market Orders
+
+Stop Orders
+
+Iceberg Orders
+
+No persistence.
+
+No networking.
+
+Single-threaded.
+
+No performance optimizations.
+
+Next Phase (Resume Here)
+
+The next feature is Order Cancellation.
+
+This is intentionally the first major architectural extension because it forces the engine to evolve beyond append-only matching.
+
+Problem
+
+Current architecture only supports
+
+Insert
+
+↓
+
+Match
+
+Once an order rests in the book, there is no efficient way to locate it.
+
+The only possible implementation would require scanning
+
+every price level
+
+↓
+
+every order
+
+which is unacceptable.
+
+Goal
+
+Support
+
+cancel(orderId)
+
+in
+
+O(1)
+
+order lookup.
+
+Expected Design Discussion
+
+The next session should begin by designing an Order Index.
+
+Topics to discuss:
+
+1. Order Lookup
+
+Current complexity
+
+O(n)
+
+Desired
+
+O(1)
+
+Candidate
+
+Map<Long, ?>
+
+Question:
+
+What should the map store?
+
+Order
+
+?
+
+PriceLevel
+
+?
+
+OrderHandle
+
+?
+
+Trade-offs should be discussed before implementation.
+
+2. Removal from FIFO Queue
+
+Current queue
+
+ArrayDeque<Order>
+
+Question:
+
+Can arbitrary orders be removed efficiently?
+
+If not,
+
+should the internal data structure change?
+
+Alternatives should be evaluated before coding.
+
+3. API Design
+
+Current public API
+
+submit(OrderRequest)
+
+Potential new APIs
+
+cancel(orderId)
+
+modify(orderId,...)
+
+replace(...)
+
+Design before implementation.
+
+4. Testing Strategy
+
+Before implementation, create
+
+Cancellation Tests
+
+including
+
+cancel resting order
+cancel nonexistent order
+cancel already filled order
+partial fill then cancel
+cancel head order
+cancel middle order
+cancel last order
+volume updates correctly
+FIFO preserved after cancellation
+Architecture Decisions Made
+
+The following decisions have already been finalized and should NOT be revisited unless a compelling reason emerges.
+
+Matching is event-driven.
+Trade price equals resting price.
+FIFO within a price level.
+match() executes exactly one trade.
+process() owns the matching loop.
+PriceLevel owns queue invariants.
+OrderBook owns book structure.
+OrderRequest is the public request model.
+Order is an internal domain object.
+Unit tests should verify behavior and invariants rather than implementation details.
+Working Style Notes
+Guided/Socratic discussion before implementation.
+Understand why before writing code.
+Small concrete examples before abstraction.
+Code reviews should focus on architecture, invariants, and responsibility boundaries—not just correctness.
+New architectural decisions should be captured as ADRs (Architecture Decision Records) so the reasoning behind design choices is preserved alongside the evolving codebase.

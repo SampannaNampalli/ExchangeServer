@@ -42,7 +42,7 @@ public class OrderBookTest {
     }
 
     static Order order(long id, Side side, long price, long quantity) {
-        return new Order(id, side, price, quantity, Instant.EPOCH);
+        return new Order(id, side, price, quantity, Instant.EPOCH, OrderType.LIMIT);
     }
 
     // Order ids at the best level of a side, in time priority.

@@ -1,0 +1,185 @@
+
+->
+1. add() should throw on a duplicate id.
+2. What are the tradeoffs if an id is reused after its order is filled or cancelled, and also its effects on the replayed log?
+3. Optional<Order>, since the ack will require an id.
+4. I am not sure. 
+5. Since having a duplicate id is an illegal state, the check must come before anything to with the level. Modifying a level 
+6. But a single check like that takes around nanoseconds, right? So, for such a price, it allows us to make sure that our system is in a valid state. I think it should remain.
+7. Find the actual order using id and map -> call priceLevel.unlink(orderNode) -> remove from map
+bids  99: [B1(10), B2(5)] 
+id map: {1→node B1, 2→node B2, 4→node S4}
+After that level98 becomes empty. The treemap is the data structure which holds the pricelevels, and the key is the price of the order, ie. the price of the price level, which we can get from the order node we get from the map.
+
+->
+1. head.next = tail, head.prev = tail, tail.next = head, tail.prev = head
+
+2. (head.next == tail) or (tail.next == head) or (head.prev == tail) or (tail.prev == head)
+
+3. Maybe => OrderNode argument must not be null in the constructor.
+
+4. 	
+
+	// Block 1
+	D.prev = tail.prev;
+	tail.prev.next = D;
+	
+	// Block 2
+	D.next = tail;
+	tail.prev = D;
+
+Lines that use tail.prev to access OrderNode C(30) will not work if tail.prev is reassigned to D before. Any combination of block ordering and mixing up these blocks other than above will result in incorrect connections between nodes.
+	
+5. If the caller passes the links in, all the links can be established in the constructor itself. I am not sure of any other reason.
+
+6. totalVolume always increases by getRemaningQuantity(). If the order has any remaining quantity, it is bound to reach addOrder().
+
+7. Because if any order added leads to a totalBolume of Long.MAX_VALUE, the system goes into an illegal state. If D was linked before the error was thrown, then the system has already entered an illegal state, which is counter-productive to having a throws.
+
+8. 	B.prev.next = B.next;
+	B.next.prev = B.prev;
+	B.next = null;
+	B.prev = null;
+	B.level = null;
+
+9. Both unlinking A or C or a level holding only A do not need other branches, since all links to be changed/deleted of a node to be unlinked are present in the node itself.
+
+10. 	level == null
+If the splice were to run before the guards, a NPE would occur when accessing B's links.
+
+11. If we assume there to be no guards for level-checking:
+a. level 100's totalVolume and noOfOrders would decrease illegally, and can go below 0, which would be an illegal state.
+b. level 101's list and counters would remain the same since it was to level 100 that the node was passed.
+
+12. 
+a. 20
+b. 0
+c. 12
+The single expression that can be used is 	totalVolume -= order.getRemainingQuantity();
+
+13. unlink() can maybe return a boolean, which can be used to check whether the operation was successful. The calling flow should work like this:
+
+MatchingEngine.match() => OrderBook.removeOrder() => PriceLevel.unlink()
+
+14. peekFirstOrder() on an empty level: 	head.next = tail
+return null, since no valid order is resting.
+
+15. Throw, since it is an illegal state, and we want to know about it. No legitimate caller should be able to reach it.
+
+16. When head.next is read, the call should be B.fill(0), right? I did not understand what you meant.
+
+17. Assuming A has yet to be removed:
+a. totalVolume = 0
+b. isFullyConsumed() returns true
+c. Maybe isFullyConsumed(), since its query is directly on an active state, not a derived state like totalVolume.
+
+18. noOfOrders as a field would cost O(1) per addition of a new order. Deriving it by walking the list would cost O(N), where N is the no. of orders at that time. I do not know what you mean by a drifted counter.
+
+19. I am not sure.
+
+
+
+->
+14/10/26 - 5:57 PM.
+
+A. Two decisions to make before writing any code
+Duplicate ids. Today MatchingEngine assigns ids; in the target design the sequencer will. Given that, should add() throw on a duplicate id, or return a reject? The spec §6 observation is the hint.
+
+Can an id be reused after its order is filled or cancelled? Who would ever want that, and what would it break in a replayed log?
+
+Cancel's result type. The options:
+
+boolean
+Optional<Order>
+enum CancelResult { CANCELLED, UNKNOWN_ORDER }
+a small record
+Think ahead to step 4: the gateway has to send the client an ack. What does it need to know besides success or failure? Pick one and justify it.
+
+B. add()
+The spec's order of operations is: reject zero remaining → reject duplicate → get or create the level → addOrder → map.put. List every way the code can throw after computeIfAbsent has created a brand-new level at a new price, say 97. Given PriceLevel's checks, can the "empty level left in the TreeMap" bug actually happen today? Should you still structure the code so it can't?
+Why must the duplicate check come before getting or creating the level?
+PriceLevel.addOrder now rejects orders with zero remaining itself. Keep OrderBook's identical check or delete it? Decide using principle 1's last bullet ("invariants are protected at their source, not re-checked redundantly by callers").
+C. removeOrder(id) (internal)
+Trace removeOrder(3) (that's B3) step by step and write out the final state of bids and the map. To remove the level you need a TreeMap and a key. Where does each come from? Can PriceLevel tell you its side?
+Order of operations: unlink first and then map.remove, or the other way round? If unlink throws (a broken invariant), which leftover state is more useful to whoever debugs it?
+bids.remove(99) returns the removed value, or null. Is that return value worth checking, and against what?
+A missing id throws here but returns a reject in cancel(). Explain why the same input gets two different treatments.
+D. cancel(id) (external)
+First B1 is partially filled, 4 of 10. Then cancel(1) arrives. Write out the book afterwards and the volume at 99.
+S4 was fully filled earlier, and then cancel(4) arrives. What happens? Can the book distinguish "never existed" from "already done"? Does it need to, or is that someone else's job?
+Can a cancel ever arrive in the middle of a match() loop, while a head is exhausted but not yet unlinked? Why or why not?
+E. Cleanup and determinism
+After step 3, removeOrder removes emptied levels. Who still needs removePriceLevel(Side) once step 4 lands? Delete it, keep it, or make it private? Use principle 2 to decide.
+The map is a HashMap. The determinism rule bans dependence on hash-iteration order. Is the map safe? What future feature (think market data or snapshots) might be tempted to iterate it, and what should that feature iterate instead?
+F. Tests
+To assert "no empty level was left behind" and "no stale map entry", what does a test need to observe? Which accessors does OrderBook already have, and what would you add, at what visibility?
+
+1. add() should throw on a duplicate id.
+
+2. In a replayed log, there will be 2 orders with the same id. This might break the uniqueness an id carries, because 2 different orders will have the same id with possibly different information.
+
+3. Hmm... besides an ack, the client might also need to know the reason behind the rejection, if it does occur.
+
+4. The only places that can throw will be the addOrder() method of the PriceLevel class with its 3 guards, or any other internal issues of a HashMap - orderMap.
+
+5. Since the system will have already been corrupted because of the creation of a price level without consisting of an order.
+
+6. Keep it, since it will cost time in the order of nanoseconds.
+
+7. Throw an error if the orderId received is duplicate -> Initialize the OrderNode from the orderId -> Unlink the OrderNode using the unlink() method of PriceLevel -> Remove it from the OrderMap -> If the price level has been fully consumed, remove it from its side.
+Final State: 
+bids  99: [B1(10), B2(5)]      asks  101: [S4(20)]
+id map: {1→node B1, 2→node B2, 4→node S4}
+
+8. Removing from the map first will remove the erroneous order, which will make it impossible to debug it afterwards, since the order will have essentially ceased to exist when it was removed from the map. On the other hand, if an error is thrown first, with the help of the log, with the order still accessible through the order book, we can debug the order.
+
+9. I am not sure what it can be checked against. If you mean to say that it should be checked with the local values of remove(), then it seems redundant.
+
+10. Since remove() is the central method used to remove an order from the order book. It can originate from many places, and one of them is when an order has been exhausted and needs to be removed from a price level and the order book. This scenario represents a genuine need of removal, and as such, if there is no orderId, it means that the somewhere along the way, the system was corrupted. On the other hand, cancel has only one origin, a request to cancel an order by a client. A cancel request on a missing id, essentially means that the order under consideration is not present in the book. And more importantly, since such a scenario does not represent or hint at a corrupt system in any way, we just reject it.
+
+11. 
+Book:
+bids  99: [B2(5)]      asks  101: [S4(20)]
+id map: {2→node B2, 4→node S4}
+volume at 99: before cancel (11) -> after cancel (5)
+
+12. The book cannot distinguish "already done" and
+"never existed". It does not need to. Whenever an order
+is filled and removed, the system publishes an appropriate
+event. 
+
+13. A cancel can arrive in the middle of a match() loop.
+But it will not be executed since the model we are
+using is a single threaded execution engine. Only after
+the head order has been filled, and removed, is the
+cancel read.
+
+14. I am not sure what you mean. Can you explain more 
+simply?
+
+15. Iteration over the map is random, so it may not be 
+safe. I think snapshots (used for system recovery), may
+try to use it to store current state of the system. I 
+am not sure about how market data would use it, since it
+will follow logs, or events most probably.
+
+16. For the "no empty level was left behind": insert
+order -> rest it -> insert another matchable order ->
+match it -> store price level of the resting order -> 
+fill it -> remove it -> check whether the stored reference
+of the previously rested order's price level is empty.
+
+->
+2A. No, I cannot say whether FOK is supported or not, meaning that it is a state-dependant check.
+2B. Our own bug.
+
+Table:
+
+IOC - {all filled; some filled, rest cancelled; none filled, all cancelled}
+FOK - {all filled; none filled, all cancelled; none filled, all cancelled}
+MARKET - {all filled; some filled, rest is cancelled; none filled, all cancelled}
+POST_ONLY - {all cancelled; all cancelled; all rested}
+
+=> 
+Quantity = {all filled, some filled, none filled}
+Status = {rested, cancelled}

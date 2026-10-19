@@ -114,7 +114,7 @@ class OrderRequestTest {
             OrderRequest req = request(Order.MAX_PRICE, Order.MAX_ORDER_QUANTITY);
 
             assertDoesNotThrow(() ->
-                    new Order(1, req.getSide(), req.getPrice(), req.getQuantity(), Instant.EPOCH));
+                    new Order(1, req.getSide(), req.getPrice(), req.getQuantity(), Instant.EPOCH, OrderType.LIMIT));
         }
 
         @Test
@@ -122,7 +122,7 @@ class OrderRequestTest {
             OrderRequest req = request(1, 1);
 
             assertDoesNotThrow(() ->
-                    new Order(1, req.getSide(), req.getPrice(), req.getQuantity(), Instant.EPOCH));
+                    new Order(1, req.getSide(), req.getPrice(), req.getQuantity(), Instant.EPOCH, OrderType.LIMIT));
         }
 
         @Test
@@ -131,7 +131,7 @@ class OrderRequestTest {
             OrderBook book = new OrderBook();
             MatchingEngine engine = new MatchingEngine(book);
 
-            assertTrue(engine.submit(request(Order.MAX_PRICE, Order.MAX_ORDER_QUANTITY)).isEmpty());
+            assertTrue(engine.submit(request(Order.MAX_PRICE, Order.MAX_ORDER_QUANTITY)).trades().isEmpty());
             assertEquals(Order.MAX_ORDER_QUANTITY, book.getVolume(Side.BUY, Order.MAX_PRICE));
         }
     }

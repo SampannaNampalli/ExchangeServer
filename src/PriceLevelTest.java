@@ -29,7 +29,7 @@ class PriceLevelTest {
     }
 
     static Order buy(long id, long quantity) {
-        return new Order(id, Side.BUY, PRICE, quantity, Instant.EPOCH);
+        return new Order(id, Side.BUY, PRICE, quantity, Instant.EPOCH, OrderType.LIMIT);
     }
 
     static List<Long> ids(List<Order> orders) {
@@ -110,7 +110,7 @@ class PriceLevelTest {
 
         @Test
         void wrongPriceIsRejectedAndLevelUntouched() {
-            Order wrong = new Order(4, Side.BUY, PRICE + 1, 5, Instant.EPOCH);
+            Order wrong = new Order(4, Side.BUY, PRICE + 1, 5, Instant.EPOCH, OrderType.LIMIT);
             assertThrows(IllegalArgumentException.class, () -> level.addOrder(wrong));
 
             assertEquals(List.of(1L, 2L, 3L), ids(level.ordersHeadToTail()));
@@ -236,7 +236,7 @@ class PriceLevelTest {
         @Test
         void foreignNodeThrowsAndBothLevelsUntouched() {
             PriceLevel other = new PriceLevel(PRICE + 1);
-            OrderNode foreign = other.addOrder(new Order(9, Side.BUY, PRICE + 1, 5, Instant.EPOCH));
+            OrderNode foreign = other.addOrder(new Order(9, Side.BUY, PRICE + 1, 5, Instant.EPOCH, OrderType.LIMIT));
 
             assertThrows(IllegalStateException.class, () -> level.unlink(foreign));
 
