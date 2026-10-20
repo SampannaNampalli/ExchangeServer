@@ -1,5 +1,4 @@
 import jdk.jfr.Description;
-
 import java.util.*;
 
 public class OrderBook {
@@ -139,6 +138,13 @@ public class OrderBook {
         return asks.size();
     }
 
+    public Iterator<PriceLevel> askPriceLevelIterator() {
+        return Collections.unmodifiableCollection(asks.values()).iterator();
+    }
+    
+    public Iterator<PriceLevel> bidPriceLevelIterator() {
+        return Collections.unmodifiableCollection(bids.values()).iterator();
+    }
     
     // For testing.
 

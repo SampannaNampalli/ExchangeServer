@@ -31,16 +31,27 @@ public class MatchingEngine {
         Side restingSide = (incomingOrder.getSide() == Side.BUY) ? Side.SELL : Side.BUY;
         OrderStatus orderStatus;
         long remainingQuantity;
+        boolean canBeFilled = true;
+        boolean canBeRested = true;
+        Optional<PriceLevel> restingLevelOpt;
 
-        
-        if ((incomingOrder.getOrderType() != OrderType.IOC) && (incomingOrder.getOrderType() != OrderType.LIMIT)) { // for other yet-to-be-supported types.
-            throw new IllegalStateException("Illegal State (Temporary): Other order types are not yet supported.");
+        // If FOK
+        if (incomingOrder.getOrderType() == OrderType.FOK) {
+            canBeFilled = canBeFilled(incomingOrder);
         }
 
-        Optional<PriceLevel> restingLevelOpt;
+        // If POST_ONLY.
+        if (incomingOrder.getOrderType() == OrderType.POST_ONLY) {
+            if ((restingLevelOpt = orderBook.bestLevel(restingSide)).isPresent()
+                && crosses(incomingOrder, restingLevelOpt.get()))
+            canBeRested = false;
+        }
+
         while (incomingOrder.getRemainingQuantity() > 0
                 && (restingLevelOpt = orderBook.bestLevel(restingSide)).isPresent()
-                && crosses(incomingOrder, restingLevelOpt.get())) {
+                && crosses(incomingOrder, restingLevelOpt.get())
+                && (canBeFilled)
+                && (incomingOrder.getOrderType() != OrderType.POST_ONLY)) {
 
             Trade trade = match(incomingOrder, restingLevelOpt.get());
             trades.add(trade);
@@ -55,13 +66,52 @@ public class MatchingEngine {
                 }
                 yield OrderStatus.FILLED;
             }
-            case IOC -> (remainingQuantity > 0) ? OrderStatus.CANCELLED : OrderStatus.FILLED;
-            case FOK, MARKET, POST_ONLY -> throw new IllegalStateException(
-                    "Illegal State (Temporary): Order type not yet supported: " + incomingOrder.getOrderType());
+            case FOK -> {
+                if (canBeFilled) {
+                    if (remainingQuantity != 0) {
+                        throw new IllegalStateException("ILLEGAL STATE: Fillable FOK not completely filled");
+                    }
+                    yield OrderStatus.FILLED;
+                }
+                yield OrderStatus.CANCELLED;
+            }
+            case IOC, MARKET -> (remainingQuantity > 0) ? OrderStatus.CANCELLED : OrderStatus.FILLED;
+            case POST_ONLY -> {
+                if (canBeRested) {
+                    orderBook.addOrderToBook(incomingOrder);
+                    yield OrderStatus.RESTED;
+                }
+                yield OrderStatus.REJECTED;
+            }
         };
 
 
         return new Response(incomingOrder.getOrderId(), trades, orderStatus, remainingQuantity);
+    }
+
+    // For FOK.
+    boolean canBeFilled(Order incomingOrder) {
+
+        Side incomingSide = incomingOrder.getSide();
+        Iterator<PriceLevel> it = (incomingSide == Side.BUY) ? orderBook.askPriceLevelIterator() : orderBook.bidPriceLevelIterator();
+        long remainingQuantity = incomingOrder.getOriginalQuantity();
+        
+        while (it.hasNext()) {
+            PriceLevel restingPL = it.next();
+
+            // Price does not cross.
+            if (!crosses(incomingOrder, restingPL)) {
+                return false;
+            }
+
+            remainingQuantity -= restingPL.getTotalVolume();
+            // Quantity has been filled.
+            if (remainingQuantity <= 0) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     Trade match(Order incomingOrder, PriceLevel restingPL) {
@@ -101,6 +151,11 @@ public class MatchingEngine {
     }
 
     boolean crosses(Order incomingOrder, PriceLevel restingPL) {
+
+        // For MARKET orders.
+        if (incomingOrder.getOrderType() == OrderType.MARKET) {
+            return true;
+        }
 
         Side restingSide = (incomingOrder.getSide() == Side.BUY) ? Side.SELL : Side.BUY;
 

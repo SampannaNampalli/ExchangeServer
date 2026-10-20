@@ -47,7 +47,7 @@ class MatchingEngineSubmitTest {
 
     @Test
     void incomingBuyOnEmptyBook() {
-        OrderRequest orderRequest = new OrderRequest(Side.BUY, 100, 50);
+        OrderRequest orderRequest = OrderRequest.limit(Side.BUY, 100, 50);
 
         List<Trade> trades = engine.submit(orderRequest).trades();
 
@@ -60,8 +60,8 @@ class MatchingEngineSubmitTest {
     @Test
     void incomingBuyExactlyMatchesSingleRestingAsk() {
 
-        OrderRequest restingOrderRequest = new OrderRequest(Side.SELL, 100, 40);
-        OrderRequest incomingOrderRequest = new OrderRequest(Side.BUY, 100, 40);
+        OrderRequest restingOrderRequest = OrderRequest.limit(Side.SELL, 100, 40);
+        OrderRequest incomingOrderRequest = OrderRequest.limit(Side.BUY, 100, 40);
 
         engine.submit(restingOrderRequest);
 
@@ -90,9 +90,9 @@ class MatchingEngineSubmitTest {
     void ordersDoNotCross() {
 
         // Create order request objects.
-        OrderRequest restingOrderRequest1 = new OrderRequest(Side.SELL, 100, 20);
-        OrderRequest restingOrderRequest2 = new OrderRequest(Side.SELL, 102, 40);
-        OrderRequest incomingOrderRequest = new OrderRequest(Side.BUY, 85, 100);
+        OrderRequest restingOrderRequest1 = OrderRequest.limit(Side.SELL, 100, 20);
+        OrderRequest restingOrderRequest2 = OrderRequest.limit(Side.SELL, 102, 40);
+        OrderRequest incomingOrderRequest = OrderRequest.limit(Side.BUY, 85, 100);
 
         // Submit the orders that need to be rested.
         engine.submit(restingOrderRequest1);
@@ -118,9 +118,9 @@ class MatchingEngineSubmitTest {
     @Test
     void stopWhenPricesNoLongerCrossWith2RestingSells() {
 
-        OrderRequest restingOrderRequest1 = new OrderRequest(Side.SELL, 100, 20);
-        OrderRequest restingOrderRequest2 = new OrderRequest(Side.SELL, 110, 40);
-        OrderRequest incomingOrderRequest = new OrderRequest(Side.BUY, 105, 40);
+        OrderRequest restingOrderRequest1 = OrderRequest.limit(Side.SELL, 100, 20);
+        OrderRequest restingOrderRequest2 = OrderRequest.limit(Side.SELL, 110, 40);
+        OrderRequest incomingOrderRequest = OrderRequest.limit(Side.BUY, 105, 40);
 
         engine.submit(restingOrderRequest1);
         engine.submit(restingOrderRequest2);
@@ -148,8 +148,8 @@ class MatchingEngineSubmitTest {
 
     @Test
     void incomingBuyLargerThanRestingAsk_restsRemainingQuantity() {
-        OrderRequest restingOrderRequest = new OrderRequest(Side.SELL, 100, 40);
-        OrderRequest incomingOrderRequest = new OrderRequest(Side.BUY, 105, 70);
+        OrderRequest restingOrderRequest = OrderRequest.limit(Side.SELL, 100, 40);
+        OrderRequest incomingOrderRequest = OrderRequest.limit(Side.BUY, 105, 70);
 
         engine.submit(restingOrderRequest);
 
@@ -179,8 +179,8 @@ class MatchingEngineSubmitTest {
 
     @Test
     void incomingSmallerBuyMatchesDoubleRestingAsk() {
-        OrderRequest restingOrderRequest = new OrderRequest(Side.SELL, 100, 70);
-        OrderRequest incomingOrderRequest = new OrderRequest(Side.BUY, 105, 40);
+        OrderRequest restingOrderRequest = OrderRequest.limit(Side.SELL, 100, 70);
+        OrderRequest incomingOrderRequest = OrderRequest.limit(Side.BUY, 105, 40);
 
         Order restingOrder = engine.createOrder(restingOrderRequest);
 
@@ -206,10 +206,10 @@ class MatchingEngineSubmitTest {
     void multiLevelWalkWith3RestingSellsAnd1Buy() {
 
         // 3 resting sells.
-        OrderRequest restingOrderRequest1 = new OrderRequest(Side.SELL, 100, 20);
-        OrderRequest restingOrderRequest2 = new OrderRequest(Side.SELL, 101, 30);
-        OrderRequest restingOrderRequest3 = new OrderRequest(Side.SELL, 102, 40);
-        OrderRequest incomingOrderRequest = new OrderRequest(Side.BUY, 105, 60);
+        OrderRequest restingOrderRequest1 = OrderRequest.limit(Side.SELL, 100, 20);
+        OrderRequest restingOrderRequest2 = OrderRequest.limit(Side.SELL, 101, 30);
+        OrderRequest restingOrderRequest3 = OrderRequest.limit(Side.SELL, 102, 40);
+        OrderRequest incomingOrderRequest = OrderRequest.limit(Side.BUY, 105, 60);
 
         engine.submit(restingOrderRequest1);
         engine.submit(restingOrderRequest2);
@@ -250,8 +250,8 @@ class MatchingEngineSubmitTest {
 
     @Test
     void restingSideBecomesEmpty() {
-        OrderRequest restingOrderRequest1 = new OrderRequest(Side.SELL, 100, 20);
-        OrderRequest incomingOrderRequest = new OrderRequest(Side.BUY, 100, 100);
+        OrderRequest restingOrderRequest1 = OrderRequest.limit(Side.SELL, 100, 20);
+        OrderRequest incomingOrderRequest = OrderRequest.limit(Side.BUY, 100, 100);
 
         engine.submit(restingOrderRequest1);
 
@@ -276,9 +276,9 @@ class MatchingEngineSubmitTest {
 
     @Test
     void checkingFIFOAcrossMultipleCalls() {
-        OrderRequest restingOrderRequest1 = new OrderRequest(Side.SELL, 100, 10);
-        OrderRequest restingOrderRequest2 = new OrderRequest(Side.SELL, 100, 20);
-        OrderRequest incomingOrderRequest = new OrderRequest(Side.BUY, 100, 25);
+        OrderRequest restingOrderRequest1 = OrderRequest.limit(Side.SELL, 100, 10);
+        OrderRequest restingOrderRequest2 = OrderRequest.limit(Side.SELL, 100, 20);
+        OrderRequest incomingOrderRequest = OrderRequest.limit(Side.BUY, 100, 25);
 
         engine.submit(restingOrderRequest1);
         engine.submit(restingOrderRequest2);

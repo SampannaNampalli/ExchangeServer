@@ -1,3 +1,14 @@
+# Market
+
+1. No price -> always crosses (as long as opposite level is not empty) -> modify crosses() in regards to MARKET orders.
+2. go thru where
+3. never rests -> Completely Filled => FILLED : Remaining => CANCELLED
+
+# FOK
+
+1. Check whether there is enough liquidity present at the current moment in the book -> fillable(long orderQuantity): boolean
+
+
 # Return type of process(OrderRequest)
 
 ## Requirements:

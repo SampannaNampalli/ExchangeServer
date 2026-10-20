@@ -8,6 +8,7 @@ public class Order {
     private final Instant timestamp; // system timestamp.
     public static final long MAX_ORDER_QUANTITY = 1000000000L;
     public static final long MAX_PRICE = Long.MAX_VALUE / MAX_ORDER_QUANTITY;
+    public static final long NO_PRICE = -1;
     private long filledQuantity;
     private final OrderType orderType;
 
@@ -18,9 +19,6 @@ public class Order {
         }
         if (orderId <= 0) {
             throw new IllegalArgumentException("Order ID must be positive");
-        }
-        if (price <= 0) {
-            throw new IllegalArgumentException("Price must be positive");
         }
         if (originalQuantity <= 0) {
             throw new IllegalArgumentException("Quantity must be greater than 0.");
@@ -35,9 +33,11 @@ public class Order {
         if (orderType == null) {
             throw new IllegalArgumentException("ILLEGAL REQUEST: Invalid order type");
         }
-        // temporary.
-        if (orderType != OrderType.LIMIT && orderType != OrderType.IOC) {
-            throw new IllegalArgumentException("ILLEGAL REQUEST: Only LIMIT and IOC order types are accepted for now.");
+        if (orderType == OrderType.MARKET && price != Order.NO_PRICE) {
+            throw new IllegalArgumentException("ILLEGAL REQUEST: MARKET order type has a price.");
+        }
+        if (orderType != OrderType.MARKET && price <= 0) {
+            throw new IllegalArgumentException("ILLEGAL REQUEST: Except MARKET order type orders, all must have a valid price.");            
         }
 
         this.orderId = orderId;
@@ -57,6 +57,9 @@ public class Order {
     }
 
     public long getPrice() {
+        if (orderType == OrderType.MARKET) {
+            throw new IllegalStateException("ILLEGAL REQUEST: MARKET order type orders do not have a price.");
+        }
         return this.price;
     }
 

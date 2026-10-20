@@ -25,7 +25,7 @@ class MatchingEngineIocTest {
     }
 
     static OrderRequest limit(Side side, long price, long quantity) {
-        return new OrderRequest(side, price, quantity);
+        return OrderRequest.limit(side, price, quantity);
     }
 
     static OrderRequest ioc(Side side, long price, long quantity) {

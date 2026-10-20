@@ -27,7 +27,7 @@ class MatchingEngineCancelTest {
     }
 
     static OrderRequest req(Side side, long price, long quantity) {
-        return new OrderRequest(side, price, quantity);
+        return OrderRequest.limit(side, price, quantity);
     }
 
     @Test

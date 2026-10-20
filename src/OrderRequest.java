@@ -6,14 +6,11 @@ public class OrderRequest {
 
     // Constructor
 
-    // With OrderType.
+    // every path ends here, so validation lives in exactly one place.
     public OrderRequest(Side side, long price, long quantity, OrderType orderType) {
 
         if (side != Side.BUY && side != Side.SELL) {
             throw new IllegalArgumentException("Select a valid Side.");
-        }
-        if (price <= 0) {
-            throw new IllegalArgumentException("Price must be positive");
         }
         if (price > Order.MAX_PRICE) {
             throw new IllegalArgumentException("INVALID. Order priced at Long.MAX_VALUE.");
@@ -27,9 +24,11 @@ public class OrderRequest {
         if (orderType == null) {
             throw new IllegalArgumentException("ILLEGAL REQUEST: Invalid order type");
         }
-        // temporary.
-        if (orderType != OrderType.LIMIT && orderType != OrderType.IOC) {
-            throw new IllegalArgumentException("ILLEGAL REQUEST (temporary): Only LIMIT and IOC order types are accepted for now.");
+        if (orderType != OrderType.MARKET && price <= 0) {
+            throw new IllegalArgumentException("ILLEGAL REQUEST: Non-MARKET order type does not have a price.");
+        }
+        if (orderType == OrderType.MARKET && price != Order.NO_PRICE) {
+            throw new IllegalArgumentException("ILLEGAL REQUEST: MARKET order type has a price.");
         }
 
         this.side = side;
@@ -38,10 +37,15 @@ public class OrderRequest {
         this.orderType = orderType;
     }
 
-    // Without OrderType.
-    public OrderRequest(Side side, long price, long quantity) {
+    // Static factory: Without an order type. Default to LIMIT.
+    public static OrderRequest limit(Side side, long price, long quantity) {
 
-        this(side, price, quantity, OrderType.LIMIT);
+        return new OrderRequest(side, price, quantity, OrderType.LIMIT);
+    }
+
+    // Static factory: MARKET. No price.
+    public static OrderRequest market(Side side, long quantity) {
+        return new OrderRequest(side, Order.NO_PRICE, quantity, OrderType.MARKET);
     }
 
     // Getters.

@@ -18,7 +18,7 @@ Boundaries tested for each limit: below min, min, max, above max.
 class OrderRequestTest {
 
     static OrderRequest request(long price, long quantity) {
-        return new OrderRequest(Side.BUY, price, quantity);
+        return OrderRequest.limit(Side.BUY, price, quantity);
     }
 
     @Nested
@@ -26,13 +26,13 @@ class OrderRequestTest {
 
         @Test
         void buyAndSellAreAccepted() {
-            assertEquals(Side.BUY, new OrderRequest(Side.BUY, 100, 10).getSide());
-            assertEquals(Side.SELL, new OrderRequest(Side.SELL, 100, 10).getSide());
+            assertEquals(Side.BUY, OrderRequest.limit(Side.BUY, 100, 10).getSide());
+            assertEquals(Side.SELL, OrderRequest.limit(Side.SELL, 100, 10).getSide());
         }
 
         @Test
         void nullSideIsRejected() {
-            assertThrows(IllegalArgumentException.class, () -> new OrderRequest(null, 100, 10));
+            assertThrows(IllegalArgumentException.class, () -> OrderRequest.limit(null, 100, 10));
         }
     }
 
