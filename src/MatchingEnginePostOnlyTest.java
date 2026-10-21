@@ -16,6 +16,16 @@ class MatchingEnginePostOnlyTest {
 
     OrderBook orderBook;
     MatchingEngine engine;
+    Sequencer sequencer = new Sequencer();
+
+    // Step 3B: requests reach the engine only as stamped commands. Ids start at 1, as before.
+    Response submit(OrderRequest request) {
+        return engine.submitNewOrderCommand(sequencer.createStampedNewOrderCommand(request));
+    }
+
+    CancelResult cancel(long orderId) {
+        return engine.submitCancelOrderCommand(sequencer.createStampedCancelOrderCommand(orderId));
+    }
 
     @BeforeEach
     void setUp() {
@@ -36,7 +46,7 @@ class MatchingEnginePostOnlyTest {
 
         @Test
         void onEmptyBook() {
-            Response response = engine.submit(postOnly(Side.BUY, 100, 10));     // id 1
+            Response response = submit(postOnly(Side.BUY, 100, 10));     // id 1
 
             assertEquals(1, response.orderId());
             assertTrue(response.trades().isEmpty());
@@ -47,9 +57,9 @@ class MatchingEnginePostOnlyTest {
 
         @Test
         void oneTickAwayFromTheBestAsk() {
-            engine.submit(limit(Side.SELL, 101, 10));                           // id 1
+            submit(limit(Side.SELL, 101, 10));                           // id 1
 
-            Response response = engine.submit(postOnly(Side.BUY, 100, 10));     // id 2
+            Response response = submit(postOnly(Side.BUY, 100, 10));     // id 2
 
             assertEquals(OrderStatus.RESTED, response.orderStatus());
             assertTrue(orderBook.containsOrder(2));
@@ -58,9 +68,9 @@ class MatchingEnginePostOnlyTest {
 
         @Test
         void sellOneTickAwayFromTheBestBid() {
-            engine.submit(limit(Side.BUY, 100, 10));                            // id 1
+            submit(limit(Side.BUY, 100, 10));                            // id 1
 
-            Response response = engine.submit(postOnly(Side.SELL, 101, 10));    // id 2
+            Response response = submit(postOnly(Side.SELL, 101, 10));    // id 2
 
             assertEquals(OrderStatus.RESTED, response.orderStatus());
             assertEquals(10, orderBook.getVolume(Side.SELL, 101));
@@ -68,9 +78,9 @@ class MatchingEnginePostOnlyTest {
 
         @Test
         void ownSideDoesNotCount() {
-            engine.submit(limit(Side.BUY, 100, 10));                            // id 1: same side, better price
+            submit(limit(Side.BUY, 100, 10));                            // id 1: same side, better price
 
-            Response response = engine.submit(postOnly(Side.BUY, 99, 10));     // id 2
+            Response response = submit(postOnly(Side.BUY, 99, 10));     // id 2
 
             assertEquals(OrderStatus.RESTED, response.orderStatus());
             assertEquals(2, orderBook.getNoOfBids());
@@ -78,9 +88,9 @@ class MatchingEnginePostOnlyTest {
 
         @Test
         void restedPostOnlyIsMatchedLaterAtItsOwnPrice() {
-            engine.submit(postOnly(Side.BUY, 100, 10));                         // id 1 rests
+            submit(postOnly(Side.BUY, 100, 10));                         // id 1 rests
 
-            Response sell = engine.submit(limit(Side.SELL, 99, 4));             // id 2
+            Response sell = submit(limit(Side.SELL, 99, 4));             // id 2
 
             assertEquals(1, sell.trades().size());
             assertEquals(1, sell.trades().get(0).getBuyOrderId());
@@ -90,10 +100,10 @@ class MatchingEnginePostOnlyTest {
 
         @Test
         void restedPostOnlyQueuesBehindEarlierOrders() {
-            engine.submit(limit(Side.BUY, 100, 5));                             // id 1
-            engine.submit(postOnly(Side.BUY, 100, 5));                          // id 2
+            submit(limit(Side.BUY, 100, 5));                             // id 1
+            submit(postOnly(Side.BUY, 100, 5));                          // id 2
 
-            Response sell = engine.submit(limit(Side.SELL, 100, 5));            // id 3
+            Response sell = submit(limit(Side.SELL, 100, 5));            // id 3
 
             assertEquals(1, sell.trades().get(0).getBuyOrderId());              // id 1 was first.
             assertTrue(orderBook.containsOrder(2));
@@ -101,9 +111,9 @@ class MatchingEnginePostOnlyTest {
 
         @Test
         void restedPostOnlyCanBeCancelled() {
-            Response response = engine.submit(postOnly(Side.BUY, 100, 10));
+            Response response = submit(postOnly(Side.BUY, 100, 10));
 
-            CancelResult result = engine.cancel(response.orderId());
+            CancelResult result = cancel(response.orderId());
 
             assertEquals(CancelStatus.CANCELLED, result.status());
             assertEquals(10, result.cancelledQuantity());
@@ -116,9 +126,9 @@ class MatchingEnginePostOnlyTest {
 
         @Test
         void priceEqualToBestAsk() {
-            engine.submit(limit(Side.SELL, 100, 10));                           // id 1
+            submit(limit(Side.SELL, 100, 10));                           // id 1
 
-            Response response = engine.submit(postOnly(Side.BUY, 100, 10));     // id 2
+            Response response = submit(postOnly(Side.BUY, 100, 10));     // id 2
 
             assertEquals(2, response.orderId());
             assertTrue(response.trades().isEmpty());
@@ -131,10 +141,10 @@ class MatchingEnginePostOnlyTest {
 
         @Test
         void priceThroughBestAsk() {
-            engine.submit(limit(Side.SELL, 100, 5));                            // id 1
-            engine.submit(limit(Side.SELL, 103, 5));                            // id 2
+            submit(limit(Side.SELL, 100, 5));                            // id 1
+            submit(limit(Side.SELL, 103, 5));                            // id 2
 
-            Response response = engine.submit(postOnly(Side.BUY, 105, 10));     // id 3
+            Response response = submit(postOnly(Side.BUY, 105, 10));     // id 3
 
             assertEquals(OrderStatus.REJECTED, response.orderStatus());
             assertTrue(response.trades().isEmpty());
@@ -145,9 +155,9 @@ class MatchingEnginePostOnlyTest {
 
         @Test
         void sellPriceEqualToBestBid() {
-            engine.submit(limit(Side.BUY, 100, 10));                            // id 1
+            submit(limit(Side.BUY, 100, 10));                            // id 1
 
-            Response response = engine.submit(postOnly(Side.SELL, 100, 10));    // id 2
+            Response response = submit(postOnly(Side.SELL, 100, 10));    // id 2
 
             assertEquals(OrderStatus.REJECTED, response.orderStatus());
             assertEquals(10, orderBook.getVolume(Side.BUY, 100));
@@ -156,9 +166,9 @@ class MatchingEnginePostOnlyTest {
 
         @Test
         void evenOneUnitOfOppositeVolumeIsEnough() {
-            engine.submit(limit(Side.SELL, 100, 1));                            // id 1
+            submit(limit(Side.SELL, 100, 1));                            // id 1
 
-            Response response = engine.submit(postOnly(Side.BUY, 100, 10));     // id 2
+            Response response = submit(postOnly(Side.BUY, 100, 10));     // id 2
 
             assertEquals(OrderStatus.REJECTED, response.orderStatus());
             assertEquals(1, orderBook.getVolume(Side.SELL, 100));
@@ -166,10 +176,10 @@ class MatchingEnginePostOnlyTest {
 
         @Test
         void rejectedPostOnlyCannotBeCancelled() {
-            engine.submit(limit(Side.SELL, 100, 10));                           // id 1
-            Response response = engine.submit(postOnly(Side.BUY, 100, 10));     // id 2
+            submit(limit(Side.SELL, 100, 10));                           // id 1
+            Response response = submit(postOnly(Side.BUY, 100, 10));     // id 2
 
-            CancelResult result = engine.cancel(response.orderId());
+            CancelResult result = cancel(response.orderId());
 
             assertEquals(CancelStatus.UNKNOWN_ORDER, result.status());
             assertEquals(0, result.cancelledQuantity());
@@ -177,10 +187,10 @@ class MatchingEnginePostOnlyTest {
 
         @Test
         void rejectedPostOnlyStillUsesUpItsId() {
-            engine.submit(limit(Side.SELL, 100, 10));                           // id 1
-            engine.submit(postOnly(Side.BUY, 100, 10));                         // id 2: rejected
+            submit(limit(Side.SELL, 100, 10));                           // id 1
+            submit(postOnly(Side.BUY, 100, 10));                         // id 2: rejected
 
-            Response next = engine.submit(limit(Side.BUY, 90, 10));
+            Response next = submit(limit(Side.BUY, 90, 10));
 
             assertEquals(3, next.orderId());                                    // Never reused (D16).
         }

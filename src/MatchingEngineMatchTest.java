@@ -273,16 +273,17 @@ class MatchingEngineMatchTest {
     }
 
     @Test
-    void timeStampsOfOrdersIsEarlierThanTrade() throws  InterruptedException{
-        Order restingOrder1 = new Order(1, Side.SELL, 100, 40, Instant.now(), OrderType.LIMIT);
-        Order incomingOrder = new Order(2, Side.BUY, 105, 70, Instant.now(), OrderType.LIMIT);
+    void tradeTakesTheIncomingOrderTimestamp() {
+        Instant restingTime = Instant.parse("2026-01-01T10:00:00Z");
+        Instant incomingTime = Instant.parse("2026-01-01T10:00:05Z");
+        Order restingOrder1 = new Order(1, Side.SELL, 100, 40, restingTime, OrderType.LIMIT);
+        Order incomingOrder = new Order(2, Side.BUY, 105, 70, incomingTime, OrderType.LIMIT);
 
         // Insert the restingOrder into the OrderBook.
         orderBook.addOrderToBook(restingOrder1);
 
-        Thread.sleep(100);
         Trade trade = engine.match(incomingOrder, orderBook.bestLevel(restingOrder1.getSide()).get());
-        assertTrue(trade.getTimestamp().isAfter(restingOrder1.getTimestamp()));
-        assertTrue(trade.getTimestamp().isAfter(incomingOrder.getTimestamp()));
+        assertEquals(incomingTime, trade.getTimestamp());       // The incoming order caused the trade (step 3A).
     }
+
 }

@@ -15,6 +15,16 @@ class MatchingEngineMarketTest {
 
     OrderBook orderBook;
     MatchingEngine engine;
+    Sequencer sequencer = new Sequencer();
+
+    // Step 3B: requests reach the engine only as stamped commands. Ids start at 1, as before.
+    Response submit(OrderRequest request) {
+        return engine.submitNewOrderCommand(sequencer.createStampedNewOrderCommand(request));
+    }
+
+    CancelResult cancel(long orderId) {
+        return engine.submitCancelOrderCommand(sequencer.createStampedCancelOrderCommand(orderId));
+    }
 
     @BeforeEach
     void setUp() {
@@ -36,9 +46,9 @@ class MatchingEngineMarketTest {
 
     @Test
     void exactFillAtOneLevel() {
-        engine.submit(limit(Side.SELL, 100, 10));                           // id 1
+        submit(limit(Side.SELL, 100, 10));                           // id 1
 
-        Response response = engine.submit(market(Side.BUY, 10));            // id 2
+        Response response = submit(market(Side.BUY, 10));            // id 2
 
         assertEquals(2, response.orderId());
         assertEquals(OrderStatus.FILLED, response.orderStatus());
@@ -49,10 +59,10 @@ class MatchingEngineMarketTest {
 
     @Test
     void walksLevelsAtAnyPriceBestFirst() {
-        engine.submit(limit(Side.SELL, 100, 5));                            // id 1
-        engine.submit(limit(Side.SELL, 5000, 5));                           // id 2: far away, still taken
+        submit(limit(Side.SELL, 100, 5));                            // id 1
+        submit(limit(Side.SELL, 5000, 5));                           // id 2: far away, still taken
 
-        Response response = engine.submit(market(Side.BUY, 7));             // id 3
+        Response response = submit(market(Side.BUY, 7));             // id 3
 
         assertEquals(OrderStatus.FILLED, response.orderStatus());
         assertEquals(2, response.trades().size());
@@ -65,10 +75,10 @@ class MatchingEngineMarketTest {
 
     @Test
     void sellWalksBidsFromHighestDown() {
-        engine.submit(limit(Side.BUY, 100, 4));                             // id 1
-        engine.submit(limit(Side.BUY, 1, 6));                               // id 2: lowest possible price
+        submit(limit(Side.BUY, 100, 4));                             // id 1
+        submit(limit(Side.BUY, 1, 6));                               // id 2: lowest possible price
 
-        Response response = engine.submit(market(Side.SELL, 10));           // id 3
+        Response response = submit(market(Side.SELL, 10));           // id 3
 
         assertEquals(OrderStatus.FILLED, response.orderStatus());
         assertEquals(100, response.trades().get(0).getPrice());
@@ -78,10 +88,10 @@ class MatchingEngineMarketTest {
 
     @Test
     void oldestFirstWithinALevel() {
-        engine.submit(limit(Side.SELL, 100, 3));                            // id 1
-        engine.submit(limit(Side.SELL, 100, 3));                            // id 2
+        submit(limit(Side.SELL, 100, 3));                            // id 1
+        submit(limit(Side.SELL, 100, 3));                            // id 2
 
-        Response response = engine.submit(market(Side.BUY, 4));             // id 3
+        Response response = submit(market(Side.BUY, 4));             // id 3
 
         assertEquals(1, response.trades().get(0).getSellOrderId());
         assertEquals(3, response.trades().get(0).getQuantity());
@@ -92,9 +102,9 @@ class MatchingEngineMarketTest {
 
     @Test
     void sideRunsOutLeftoverIsCancelled() {
-        engine.submit(limit(Side.SELL, 100, 4));                            // id 1
+        submit(limit(Side.SELL, 100, 4));                            // id 1
 
-        Response response = engine.submit(market(Side.BUY, 10));            // id 2
+        Response response = submit(market(Side.BUY, 10));            // id 2
 
         assertEquals(OrderStatus.CANCELLED, response.orderStatus());
         assertEquals(6, response.remainingQuantity());
@@ -106,7 +116,7 @@ class MatchingEngineMarketTest {
 
     @Test
     void emptyBookCancelsEverything() {
-        Response response = engine.submit(market(Side.BUY, 10));            // id 1
+        Response response = submit(market(Side.BUY, 10));            // id 1
 
         assertTrue(response.trades().isEmpty());
         assertEquals(OrderStatus.CANCELLED, response.orderStatus());
@@ -116,9 +126,9 @@ class MatchingEngineMarketTest {
 
     @Test
     void ownSideIsNeverTouched() {
-        engine.submit(limit(Side.BUY, 100, 10));                            // id 1: same side as the market order
+        submit(limit(Side.BUY, 100, 10));                            // id 1: same side as the market order
 
-        Response response = engine.submit(market(Side.BUY, 10));            // id 2
+        Response response = submit(market(Side.BUY, 10));            // id 2
 
         assertTrue(response.trades().isEmpty());
         assertEquals(OrderStatus.CANCELLED, response.orderStatus());
@@ -128,9 +138,9 @@ class MatchingEngineMarketTest {
 
     @Test
     void cancelledMarketOrderCannotTradeWithLaterOrders() {
-        engine.submit(market(Side.BUY, 10));                                // id 1: cancelled
+        submit(market(Side.BUY, 10));                                // id 1: cancelled
 
-        Response sell = engine.submit(limit(Side.SELL, 100, 10));           // id 2
+        Response sell = submit(limit(Side.SELL, 100, 10));           // id 2
 
         assertTrue(sell.trades().isEmpty());
         assertEquals(OrderStatus.RESTED, sell.orderStatus());
@@ -138,9 +148,9 @@ class MatchingEngineMarketTest {
 
     @Test
     void cancelOfAMarketOrderIsUnknown() {
-        Response response = engine.submit(market(Side.BUY, 10));
+        Response response = submit(market(Side.BUY, 10));
 
-        CancelResult result = engine.cancel(response.orderId());
+        CancelResult result = cancel(response.orderId());
 
         assertEquals(CancelStatus.UNKNOWN_ORDER, result.status());
         assertEquals(0, result.cancelledQuantity());

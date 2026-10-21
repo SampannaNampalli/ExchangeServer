@@ -1,17 +1,28 @@
-# Market
+# Step 3
+
+## A: Commands as data
+
+1. Create a new class -> Commands
+2. Expose two factory constructors -> new-order and cancel-order
+3. Update the matching engine to accept commands.
+
+
+# Step 2
+
+## Market
 
 1. No price -> always crosses (as long as opposite level is not empty) -> modify crosses() in regards to MARKET orders.
 2. go thru where
 3. never rests -> Completely Filled => FILLED : Remaining => CANCELLED
 
-# FOK
+## FOK
 
 1. Check whether there is enough liquidity present at the current moment in the book -> fillable(long orderQuantity): boolean
 
 
-# Return type of process(OrderRequest)
+## Return type of process(OrderRequest)
 
-## Requirements:
+### Requirements:
 
 0. Common: List<Trade>
 1. LIMIT -> Whether the order was rested, rest quantity.
@@ -21,7 +32,7 @@
 5. Post-only(must rest) -> No List<Trade>, only boolean to check whether it rested or not.
 
 
-# IOC
+## IOC
 
 1. Change OrderRequest -> Add order type -> done
 2. OrderType -> new Enum with types listed -> done

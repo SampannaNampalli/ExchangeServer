@@ -17,6 +17,16 @@ class MatchingEngineIocTest {
 
     OrderBook orderBook;
     MatchingEngine engine;
+    Sequencer sequencer = new Sequencer();
+
+    // Step 3B: requests reach the engine only as stamped commands. Ids start at 1, as before.
+    Response submit(OrderRequest request) {
+        return engine.submitNewOrderCommand(sequencer.createStampedNewOrderCommand(request));
+    }
+
+    CancelResult cancel(long orderId) {
+        return engine.submitCancelOrderCommand(sequencer.createStampedCancelOrderCommand(orderId));
+    }
 
     @BeforeEach
     void setUp() {
@@ -41,7 +51,7 @@ class MatchingEngineIocTest {
 
         @Test
         void restsOnEmptyBook() {
-            Response response = engine.submit(limit(Side.BUY, 100, 10));
+            Response response = submit(limit(Side.BUY, 100, 10));
 
             assertEquals(1, response.orderId());
             assertTrue(response.trades().isEmpty());
@@ -52,9 +62,9 @@ class MatchingEngineIocTest {
 
         @Test
         void partialFillRestsTheRemainder() {
-            engine.submit(limit(Side.SELL, 100, 4));                        // id 1
+            submit(limit(Side.SELL, 100, 4));                        // id 1
 
-            Response response = engine.submit(limit(Side.BUY, 100, 10));   // id 2
+            Response response = submit(limit(Side.BUY, 100, 10));   // id 2
 
             assertEquals(2, response.orderId());
             assertEquals(OrderStatus.RESTED, response.orderStatus());
@@ -65,9 +75,9 @@ class MatchingEngineIocTest {
 
         @Test
         void fullFillIsFilledWithNothingRemaining() {
-            engine.submit(limit(Side.SELL, 100, 10));                       // id 1
+            submit(limit(Side.SELL, 100, 10));                       // id 1
 
-            Response response = engine.submit(limit(Side.BUY, 100, 10));   // id 2
+            Response response = submit(limit(Side.BUY, 100, 10));   // id 2
 
             assertEquals(OrderStatus.FILLED, response.orderStatus());
             assertEquals(0, response.remainingQuantity());
@@ -77,9 +87,9 @@ class MatchingEngineIocTest {
 
         @Test
         void returnedIdCancelsTheRestingOrder() {
-            Response response = engine.submit(limit(Side.BUY, 100, 10));
+            Response response = submit(limit(Side.BUY, 100, 10));
 
-            CancelResult result = engine.cancel(response.orderId());
+            CancelResult result = cancel(response.orderId());
 
             assertEquals(CancelStatus.CANCELLED, result.status());
             assertEquals(10, result.cancelledQuantity());
@@ -91,7 +101,7 @@ class MatchingEngineIocTest {
 
         @Test
         void emptyBookCancelsEverythingAndNothingRests() {
-            Response response = engine.submit(ioc(Side.BUY, 100, 10));     // id 1
+            Response response = submit(ioc(Side.BUY, 100, 10));     // id 1
 
             assertEquals(1, response.orderId());
             assertTrue(response.trades().isEmpty());
@@ -103,9 +113,9 @@ class MatchingEngineIocTest {
 
         @Test
         void partialFillCancelsTheRemainder() {
-            engine.submit(limit(Side.SELL, 100, 4));                        // id 1
+            submit(limit(Side.SELL, 100, 4));                        // id 1
 
-            Response response = engine.submit(ioc(Side.BUY, 100, 10));     // id 2
+            Response response = submit(ioc(Side.BUY, 100, 10));     // id 2
 
             assertEquals(OrderStatus.CANCELLED, response.orderStatus());
             assertEquals(6, response.remainingQuantity());
@@ -117,9 +127,9 @@ class MatchingEngineIocTest {
 
         @Test
         void fullFillIsFilledNotCancelled() {
-            engine.submit(limit(Side.BUY, 100, 10));                        // id 1
+            submit(limit(Side.BUY, 100, 10));                        // id 1
 
-            Response response = engine.submit(ioc(Side.SELL, 100, 10));     // id 2
+            Response response = submit(ioc(Side.SELL, 100, 10));     // id 2
 
             assertEquals(OrderStatus.FILLED, response.orderStatus());
             assertEquals(0, response.remainingQuantity());
@@ -128,10 +138,10 @@ class MatchingEngineIocTest {
 
         @Test
         void fullFillAcrossTwoLevels() {
-            engine.submit(limit(Side.SELL, 100, 3));                        // id 1
-            engine.submit(limit(Side.SELL, 101, 5));                        // id 2
+            submit(limit(Side.SELL, 100, 3));                        // id 1
+            submit(limit(Side.SELL, 101, 5));                        // id 2
 
-            Response response = engine.submit(ioc(Side.BUY, 101, 8));      // id 3
+            Response response = submit(ioc(Side.BUY, 101, 8));      // id 3
 
             assertEquals(2, response.trades().size());
             assertEquals(100, response.trades().get(0).getPrice());         // Best price first.
@@ -142,10 +152,10 @@ class MatchingEngineIocTest {
 
         @Test
         void stopsAtItsLimitPriceAndCancelsTheRest() {
-            engine.submit(limit(Side.SELL, 100, 5));                        // id 1
-            engine.submit(limit(Side.SELL, 102, 5));                        // id 2: beyond the IOC's price
+            submit(limit(Side.SELL, 100, 5));                        // id 1
+            submit(limit(Side.SELL, 102, 5));                        // id 2: beyond the IOC's price
 
-            Response response = engine.submit(ioc(Side.BUY, 101, 10));     // id 3
+            Response response = submit(ioc(Side.BUY, 101, 10));     // id 3
 
             assertEquals(1, response.trades().size());
             assertEquals(100, response.trades().get(0).getPrice());
@@ -157,9 +167,9 @@ class MatchingEngineIocTest {
 
         @Test
         void notCrossingCancelsEverythingAndLeavesBookUnchanged() {
-            engine.submit(limit(Side.SELL, 105, 5));                        // id 1
+            submit(limit(Side.SELL, 105, 5));                        // id 1
 
-            Response response = engine.submit(ioc(Side.BUY, 100, 10));     // id 2
+            Response response = submit(ioc(Side.BUY, 100, 10));     // id 2
 
             assertTrue(response.trades().isEmpty());
             assertEquals(OrderStatus.CANCELLED, response.orderStatus());
@@ -170,9 +180,9 @@ class MatchingEngineIocTest {
 
         @Test
         void restingOrderPartlyHitByIocStaysOnBook() {
-            engine.submit(limit(Side.BUY, 100, 10));                        // id 1
+            submit(limit(Side.BUY, 100, 10));                        // id 1
 
-            engine.submit(ioc(Side.SELL, 100, 4));                          // id 2
+            submit(ioc(Side.SELL, 100, 4));                          // id 2
 
             assertTrue(orderBook.containsOrder(1));
             assertEquals(6, orderBook.getVolume(Side.BUY, 100));
@@ -180,9 +190,9 @@ class MatchingEngineIocTest {
 
         @Test
         void cancelledIocCannotTradeWithLaterOrders() {
-            engine.submit(ioc(Side.BUY, 100, 10));                          // id 1: cancelled
+            submit(ioc(Side.BUY, 100, 10));                          // id 1: cancelled
 
-            Response sell = engine.submit(limit(Side.SELL, 100, 10));       // id 2
+            Response sell = submit(limit(Side.SELL, 100, 10));       // id 2
 
             assertTrue(sell.trades().isEmpty());                            // Nothing left to hit.
             assertEquals(OrderStatus.RESTED, sell.orderStatus());
@@ -191,9 +201,9 @@ class MatchingEngineIocTest {
 
         @Test
         void cancelOfACancelledIocIsUnknown() {
-            Response response = engine.submit(ioc(Side.BUY, 100, 10));
+            Response response = submit(ioc(Side.BUY, 100, 10));
 
-            CancelResult result = engine.cancel(response.orderId());
+            CancelResult result = cancel(response.orderId());
 
             assertEquals(CancelStatus.UNKNOWN_ORDER, result.status());
             assertEquals(0, result.cancelledQuantity());

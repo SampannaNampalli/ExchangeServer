@@ -17,6 +17,16 @@ class MatchingEngineFokTest {
 
     OrderBook orderBook;
     MatchingEngine engine;
+    Sequencer sequencer = new Sequencer();
+
+    // Step 3B: requests reach the engine only as stamped commands. Ids start at 1, as before.
+    Response submit(OrderRequest request) {
+        return engine.submitNewOrderCommand(sequencer.createStampedNewOrderCommand(request));
+    }
+
+    CancelResult cancel(long orderId) {
+        return engine.submitCancelOrderCommand(sequencer.createStampedCancelOrderCommand(orderId));
+    }
 
     @BeforeEach
     void setUp() {
@@ -37,9 +47,9 @@ class MatchingEngineFokTest {
 
         @Test
         void exactQuantityAtOneLevel() {
-            engine.submit(limit(Side.SELL, 100, 10));                       // id 1
+            submit(limit(Side.SELL, 100, 10));                       // id 1
 
-            Response response = engine.submit(fok(Side.BUY, 100, 10));      // id 2
+            Response response = submit(fok(Side.BUY, 100, 10));      // id 2
 
             assertEquals(2, response.orderId());
             assertEquals(OrderStatus.FILLED, response.orderStatus());
@@ -50,10 +60,10 @@ class MatchingEngineFokTest {
 
         @Test
         void acrossTwoLevelsBestPriceFirst() {
-            engine.submit(limit(Side.SELL, 100, 4));                        // id 1
-            engine.submit(limit(Side.SELL, 101, 6));                        // id 2
+            submit(limit(Side.SELL, 100, 4));                        // id 1
+            submit(limit(Side.SELL, 101, 6));                        // id 2
 
-            Response response = engine.submit(fok(Side.BUY, 101, 10));      // id 3
+            Response response = submit(fok(Side.BUY, 101, 10));      // id 3
 
             assertEquals(OrderStatus.FILLED, response.orderStatus());
             assertEquals(2, response.trades().size());
@@ -64,10 +74,10 @@ class MatchingEngineFokTest {
 
         @Test
         void acrossTwoOrdersInOneLevelOldestFirst() {
-            engine.submit(limit(Side.SELL, 100, 4));                        // id 1
-            engine.submit(limit(Side.SELL, 100, 6));                        // id 2
+            submit(limit(Side.SELL, 100, 4));                        // id 1
+            submit(limit(Side.SELL, 100, 6));                        // id 2
 
-            Response response = engine.submit(fok(Side.BUY, 100, 10));      // id 3
+            Response response = submit(fok(Side.BUY, 100, 10));      // id 3
 
             assertEquals(OrderStatus.FILLED, response.orderStatus());
             assertEquals(1, response.trades().get(0).getSellOrderId());
@@ -76,10 +86,10 @@ class MatchingEngineFokTest {
 
         @Test
         void leavesTheRestOfTheLastLevelResting() {
-            engine.submit(limit(Side.SELL, 100, 4));                        // id 1
-            engine.submit(limit(Side.SELL, 101, 10));                       // id 2
+            submit(limit(Side.SELL, 100, 4));                        // id 1
+            submit(limit(Side.SELL, 101, 10));                       // id 2
 
-            Response response = engine.submit(fok(Side.BUY, 101, 10));      // id 3
+            Response response = submit(fok(Side.BUY, 101, 10));      // id 3
 
             assertEquals(OrderStatus.FILLED, response.orderStatus());
             assertTrue(orderBook.containsOrder(2));
@@ -88,10 +98,10 @@ class MatchingEngineFokTest {
 
         @Test
         void sellSideWalksBidsFromHighestDown() {
-            engine.submit(limit(Side.BUY, 100, 4));                         // id 1
-            engine.submit(limit(Side.BUY, 99, 6));                          // id 2
+            submit(limit(Side.BUY, 100, 4));                         // id 1
+            submit(limit(Side.BUY, 99, 6));                          // id 2
 
-            Response response = engine.submit(fok(Side.SELL, 99, 10));     // id 3
+            Response response = submit(fok(Side.SELL, 99, 10));     // id 3
 
             assertEquals(OrderStatus.FILLED, response.orderStatus());
             assertEquals(100, response.trades().get(0).getPrice());
@@ -105,9 +115,9 @@ class MatchingEngineFokTest {
 
         @Test
         void notEnoughVolumeLeavesBookUntouched() {
-            engine.submit(limit(Side.SELL, 100, 4));                        // id 1
+            submit(limit(Side.SELL, 100, 4));                        // id 1
 
-            Response response = engine.submit(fok(Side.BUY, 100, 10));      // id 2
+            Response response = submit(fok(Side.BUY, 100, 10));      // id 2
 
             assertEquals(2, response.orderId());
             assertTrue(response.trades().isEmpty());                        // Not even the 4 that crossed.
@@ -121,9 +131,9 @@ class MatchingEngineFokTest {
 
         @Test
         void oneUnitShortIsKilled() {
-            engine.submit(limit(Side.SELL, 100, 9));                        // id 1
+            submit(limit(Side.SELL, 100, 9));                        // id 1
 
-            Response response = engine.submit(fok(Side.BUY, 100, 10));      // id 2
+            Response response = submit(fok(Side.BUY, 100, 10));      // id 2
 
             assertEquals(OrderStatus.CANCELLED, response.orderStatus());
             assertEquals(9, orderBook.getVolume(Side.SELL, 100));
@@ -131,10 +141,10 @@ class MatchingEngineFokTest {
 
         @Test
         void volumeBeyondItsPriceDoesNotCount() {
-            engine.submit(limit(Side.SELL, 100, 4));                        // id 1
-            engine.submit(limit(Side.SELL, 102, 6));                        // id 2: enough in total, but above 101
+            submit(limit(Side.SELL, 100, 4));                        // id 1
+            submit(limit(Side.SELL, 102, 6));                        // id 2: enough in total, but above 101
 
-            Response response = engine.submit(fok(Side.BUY, 101, 10));      // id 3
+            Response response = submit(fok(Side.BUY, 101, 10));      // id 3
 
             assertEquals(OrderStatus.CANCELLED, response.orderStatus());
             assertTrue(response.trades().isEmpty());
@@ -144,10 +154,10 @@ class MatchingEngineFokTest {
 
         @Test
         void sellSideVolumeBelowItsPriceDoesNotCount() {
-            engine.submit(limit(Side.BUY, 100, 4));                         // id 1
-            engine.submit(limit(Side.BUY, 99, 6));                          // id 2: below the FOK's 100
+            submit(limit(Side.BUY, 100, 4));                         // id 1
+            submit(limit(Side.BUY, 99, 6));                          // id 2: below the FOK's 100
 
-            Response response = engine.submit(fok(Side.SELL, 100, 10));     // id 3
+            Response response = submit(fok(Side.SELL, 100, 10));     // id 3
 
             assertEquals(OrderStatus.CANCELLED, response.orderStatus());
             assertEquals(4, orderBook.getVolume(Side.BUY, 100));
@@ -156,7 +166,7 @@ class MatchingEngineFokTest {
 
         @Test
         void emptyBook() {
-            Response response = engine.submit(fok(Side.BUY, 100, 10));      // id 1
+            Response response = submit(fok(Side.BUY, 100, 10));      // id 1
 
             assertEquals(OrderStatus.CANCELLED, response.orderStatus());
             assertEquals(10, response.remainingQuantity());
@@ -165,9 +175,9 @@ class MatchingEngineFokTest {
 
         @Test
         void nothingCrosses() {
-            engine.submit(limit(Side.SELL, 105, 10));                       // id 1
+            submit(limit(Side.SELL, 105, 10));                       // id 1
 
-            Response response = engine.submit(fok(Side.BUY, 100, 10));      // id 2
+            Response response = submit(fok(Side.BUY, 100, 10));      // id 2
 
             assertEquals(OrderStatus.CANCELLED, response.orderStatus());
             assertEquals(10, orderBook.getVolume(Side.SELL, 105));
@@ -175,20 +185,20 @@ class MatchingEngineFokTest {
 
         @Test
         void restingOrdersKeepTheirTimePriority() {
-            engine.submit(limit(Side.SELL, 100, 3));                        // id 1: first in line
-            engine.submit(limit(Side.SELL, 100, 3));                        // id 2
-            engine.submit(fok(Side.BUY, 100, 10));                          // id 3: killed
+            submit(limit(Side.SELL, 100, 3));                        // id 1: first in line
+            submit(limit(Side.SELL, 100, 3));                        // id 2
+            submit(fok(Side.BUY, 100, 10));                          // id 3: killed
 
-            Response response = engine.submit(limit(Side.BUY, 100, 3));     // id 4
+            Response response = submit(limit(Side.BUY, 100, 3));     // id 4
 
             assertEquals(1, response.trades().get(0).getSellOrderId());     // id 1 is still first.
         }
 
         @Test
         void killedFokCannotTradeWithLaterOrders() {
-            engine.submit(fok(Side.BUY, 100, 10));                          // id 1: killed
+            submit(fok(Side.BUY, 100, 10));                          // id 1: killed
 
-            Response sell = engine.submit(limit(Side.SELL, 100, 10));       // id 2
+            Response sell = submit(limit(Side.SELL, 100, 10));       // id 2
 
             assertTrue(sell.trades().isEmpty());
             assertEquals(OrderStatus.RESTED, sell.orderStatus());
@@ -196,9 +206,9 @@ class MatchingEngineFokTest {
 
         @Test
         void cancelOfAKilledFokIsUnknown() {
-            Response response = engine.submit(fok(Side.BUY, 100, 10));
+            Response response = submit(fok(Side.BUY, 100, 10));
 
-            CancelResult result = engine.cancel(response.orderId());
+            CancelResult result = cancel(response.orderId());
 
             assertEquals(CancelStatus.UNKNOWN_ORDER, result.status());
             assertEquals(0, result.cancelledQuantity());

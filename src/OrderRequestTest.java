@@ -131,7 +131,9 @@ class OrderRequestTest {
             OrderBook book = new OrderBook();
             MatchingEngine engine = new MatchingEngine(book);
 
-            assertTrue(engine.submit(request(Order.MAX_PRICE, Order.MAX_ORDER_QUANTITY)).trades().isEmpty());
+            NewOrderCommand command = new Sequencer().createStampedNewOrderCommand(request(Order.MAX_PRICE, Order.MAX_ORDER_QUANTITY));
+
+            assertTrue(engine.submitNewOrderCommand(command).trades().isEmpty());
             assertEquals(Order.MAX_ORDER_QUANTITY, book.getVolume(Side.BUY, Order.MAX_PRICE));
         }
     }

@@ -3,27 +3,38 @@ import java.time.Instant;
 
 public class MatchingEngine {
     private final OrderBook orderBook;
-
-    private long nextOrderId = 1;
+    private long prevOrderId;
 
     public MatchingEngine(OrderBook orderBook) {
         this.orderBook = orderBook;
+        prevOrderId = 0;
     }
 
-    Order createOrder(Side side, long price, long quantity, OrderType orderType) {
+    Order createOrder(long orderId, Side side, long price, long quantity, OrderType orderType, Instant timestampInstant) {
 
-        return new Order(nextOrderId++, side, price, quantity, Instant.now(), orderType);
+        return new Order(orderId, side, price, quantity, timestampInstant, orderType);
     }
 
-    Order createOrder(OrderRequest orderRequest) {
+    Order createOrder(long orderId, OrderRequest orderRequest, Instant timeStampInstant) {
 
-        return createOrder(orderRequest.getSide(), orderRequest.getPrice(), orderRequest.getQuantity(), orderRequest.getOrderType());
+        return createOrder(orderId, orderRequest.getSide(), orderRequest.getPrice(), orderRequest.getQuantity(), orderRequest.getOrderType(), timeStampInstant);
     }
 
-    // Submit the incoming order for matching.
-    public Response submit(OrderRequest orderRequest) {
+    // Entry point 1.
+    public Response submitNewOrderCommand(NewOrderCommand command) {
         
-        return process(createOrder(orderRequest));
+        long orderId = command.getOrderId();
+        if (orderId <= prevOrderId) {
+            throw new IllegalStateException("ILLEGAL STATE: order ids are not in order");
+        }
+        prevOrderId = orderId;
+        
+        return process(createOrder(orderId, command.getOrderRequest(), command.getTimeStamp()));
+    }
+
+    // Entry point 2.
+    public CancelResult submitCancelOrderCommand(CancelOrderCommand command) {
+        return orderBook.cancel(command.getOrderId());        
     }
 
     Response process(Order incomingOrder) {
@@ -144,7 +155,7 @@ public class MatchingEngine {
         }
 
         // Construct the Trade.
-        Trade trade = new Trade(quantity, restingPL.getPrice(), buyOrderId, sellOrderId, Instant.now());
+        Trade trade = new Trade(quantity, restingPL.getPrice(), buyOrderId, sellOrderId, incomingOrder.getTimestamp());
 
         // Return the Trade object.
         return trade;
@@ -170,11 +181,6 @@ public class MatchingEngine {
         else {
             return (incomingPrice >= restingPrice);
         }
-    }
-
-    // for rested orders - client
-    public CancelResult cancel(long orderId) {
-        return orderBook.cancel(orderId);
     }
 
     // Methods required for testing.

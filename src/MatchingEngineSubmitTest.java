@@ -9,6 +9,18 @@ class MatchingEngineSubmitTest {
 
     OrderBook orderBook;
     MatchingEngine engine;
+    Sequencer sequencer = new Sequencer();
+
+    // Step 3B: requests reach the engine only as stamped commands. Ids start at 1, as before.
+    Response submit(OrderRequest request) {
+        return engine.submitNewOrderCommand(sequencer.createStampedNewOrderCommand(request));
+    }
+
+    // Builds the Order the engine would build from the next stamped command, for tests that inspect it.
+    Order createOrder(OrderRequest request) {
+        NewOrderCommand command = sequencer.createStampedNewOrderCommand(request);
+        return engine.createOrder(command.getOrderId(), command.getOrderRequest(), command.getTimeStamp());
+    }
 
     @BeforeEach
     void setup() {
@@ -49,7 +61,7 @@ class MatchingEngineSubmitTest {
     void incomingBuyOnEmptyBook() {
         OrderRequest orderRequest = OrderRequest.limit(Side.BUY, 100, 50);
 
-        List<Trade> trades = engine.submit(orderRequest).trades();
+        List<Trade> trades = submit(orderRequest).trades();
 
         assertTrue(trades.isEmpty());
         assertEquals(1, orderBook.bestBid().get().getNoOfOrders());
@@ -63,9 +75,9 @@ class MatchingEngineSubmitTest {
         OrderRequest restingOrderRequest = OrderRequest.limit(Side.SELL, 100, 40);
         OrderRequest incomingOrderRequest = OrderRequest.limit(Side.BUY, 100, 40);
 
-        engine.submit(restingOrderRequest);
+        submit(restingOrderRequest);
 
-        Order incomingOrder = engine.createOrder(incomingOrderRequest);
+        Order incomingOrder = createOrder(incomingOrderRequest);
 
         List<Trade> trades = engine.submit(incomingOrder).trades();
 
@@ -95,10 +107,10 @@ class MatchingEngineSubmitTest {
         OrderRequest incomingOrderRequest = OrderRequest.limit(Side.BUY, 85, 100);
 
         // Submit the orders that need to be rested.
-        engine.submit(restingOrderRequest1);
-        engine.submit(restingOrderRequest2);
+        submit(restingOrderRequest1);
+        submit(restingOrderRequest2);
 
-        Order incomingOrder = engine.createOrder(incomingOrderRequest);
+        Order incomingOrder = createOrder(incomingOrderRequest);
 
         List<Trade> trades = engine.submit(incomingOrder).trades();
 
@@ -122,10 +134,10 @@ class MatchingEngineSubmitTest {
         OrderRequest restingOrderRequest2 = OrderRequest.limit(Side.SELL, 110, 40);
         OrderRequest incomingOrderRequest = OrderRequest.limit(Side.BUY, 105, 40);
 
-        engine.submit(restingOrderRequest1);
-        engine.submit(restingOrderRequest2);
+        submit(restingOrderRequest1);
+        submit(restingOrderRequest2);
 
-        Order incomingOrder = engine.createOrder(incomingOrderRequest);
+        Order incomingOrder = createOrder(incomingOrderRequest);
 
         List<Trade> trades = engine.submit(incomingOrder).trades();
 
@@ -151,9 +163,9 @@ class MatchingEngineSubmitTest {
         OrderRequest restingOrderRequest = OrderRequest.limit(Side.SELL, 100, 40);
         OrderRequest incomingOrderRequest = OrderRequest.limit(Side.BUY, 105, 70);
 
-        engine.submit(restingOrderRequest);
+        submit(restingOrderRequest);
 
-        Order incomingOrder = engine.createOrder(incomingOrderRequest);
+        Order incomingOrder = createOrder(incomingOrderRequest);
 
         List<Trade> trades = engine.submit(incomingOrder).trades();
 
@@ -182,12 +194,12 @@ class MatchingEngineSubmitTest {
         OrderRequest restingOrderRequest = OrderRequest.limit(Side.SELL, 100, 70);
         OrderRequest incomingOrderRequest = OrderRequest.limit(Side.BUY, 105, 40);
 
-        Order restingOrder = engine.createOrder(restingOrderRequest);
+        Order restingOrder = createOrder(restingOrderRequest);
 
         engine.submit(restingOrder);
 
         // Directly submitting the incoming order for this test since no direct checking is performed.
-        List<Trade> trades = engine.submit(incomingOrderRequest).trades();
+        List<Trade> trades = submit(incomingOrderRequest).trades();
 
         // Exactly one trade is executed.
         assertEquals(1, trades.size());
@@ -211,11 +223,11 @@ class MatchingEngineSubmitTest {
         OrderRequest restingOrderRequest3 = OrderRequest.limit(Side.SELL, 102, 40);
         OrderRequest incomingOrderRequest = OrderRequest.limit(Side.BUY, 105, 60);
 
-        engine.submit(restingOrderRequest1);
-        engine.submit(restingOrderRequest2);
-        engine.submit(restingOrderRequest3);
+        submit(restingOrderRequest1);
+        submit(restingOrderRequest2);
+        submit(restingOrderRequest3);
 
-        Order incomingOrder = engine.createOrder(incomingOrderRequest);
+        Order incomingOrder = createOrder(incomingOrderRequest);
 
         List<Trade> trades = engine.submit(incomingOrder).trades();
 
@@ -253,9 +265,9 @@ class MatchingEngineSubmitTest {
         OrderRequest restingOrderRequest1 = OrderRequest.limit(Side.SELL, 100, 20);
         OrderRequest incomingOrderRequest = OrderRequest.limit(Side.BUY, 100, 100);
 
-        engine.submit(restingOrderRequest1);
+        submit(restingOrderRequest1);
 
-        Order incomingOrder = engine.createOrder(incomingOrderRequest);
+        Order incomingOrder = createOrder(incomingOrderRequest);
 
         List<Trade> trades = engine.submit(incomingOrder).trades();
 
@@ -280,10 +292,10 @@ class MatchingEngineSubmitTest {
         OrderRequest restingOrderRequest2 = OrderRequest.limit(Side.SELL, 100, 20);
         OrderRequest incomingOrderRequest = OrderRequest.limit(Side.BUY, 100, 25);
 
-        engine.submit(restingOrderRequest1);
-        engine.submit(restingOrderRequest2);
+        submit(restingOrderRequest1);
+        submit(restingOrderRequest2);
 
-        Order incomingOrder = engine.createOrder(incomingOrderRequest);
+        Order incomingOrder = createOrder(incomingOrderRequest);
 
         List<Trade> trades = engine.submit(incomingOrder).trades();
 

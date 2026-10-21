@@ -19,6 +19,16 @@ class MatchingEngineCancelTest {
 
     OrderBook orderBook;
     MatchingEngine engine;
+    Sequencer sequencer = new Sequencer();
+
+    // Step 3B: requests reach the engine only as stamped commands. Ids start at 1, as before.
+    Response submit(OrderRequest request) {
+        return engine.submitNewOrderCommand(sequencer.createStampedNewOrderCommand(request));
+    }
+
+    CancelResult cancel(long orderId) {
+        return engine.submitCancelOrderCommand(sequencer.createStampedCancelOrderCommand(orderId));
+    }
 
     @BeforeEach
     void setUp() {
@@ -32,9 +42,9 @@ class MatchingEngineCancelTest {
 
     @Test
     void cancelRestingOrderReturnsFullQuantityAndEmptiesBook() {
-        engine.submit(req(Side.BUY, 100, 10));                 // id 1 rests
+        submit(req(Side.BUY, 100, 10));                 // id 1 rests
 
-        CancelResult result = engine.cancel(1);
+        CancelResult result = cancel(1);
 
         assertEquals(CancelStatus.CANCELLED, result.status());
         assertEquals(10, result.cancelledQuantity());
@@ -44,10 +54,10 @@ class MatchingEngineCancelTest {
 
     @Test
     void cancelPartiallyFilledOrderReturnsOnlyRemaining() {
-        engine.submit(req(Side.SELL, 100, 10));                // id 1 rests
-        engine.submit(req(Side.BUY, 100, 4));                  // id 2 fills 4 of id 1
+        submit(req(Side.SELL, 100, 10));                // id 1 rests
+        submit(req(Side.BUY, 100, 4));                  // id 2 fills 4 of id 1
 
-        CancelResult result = engine.cancel(1);
+        CancelResult result = cancel(1);
 
         assertEquals(CancelStatus.CANCELLED, result.status());
         assertEquals(6, result.cancelledQuantity());           // 4 filled + 6 cancelled = 10 original.
@@ -56,10 +66,10 @@ class MatchingEngineCancelTest {
 
     @Test
     void cancelFullyFilledRestingOrderIsUnknown() {
-        engine.submit(req(Side.SELL, 100, 10));                // id 1 rests
-        engine.submit(req(Side.BUY, 100, 10));                 // id 2 fills it completely
+        submit(req(Side.SELL, 100, 10));                // id 1 rests
+        submit(req(Side.BUY, 100, 10));                 // id 2 fills it completely
 
-        CancelResult result = engine.cancel(1);
+        CancelResult result = cancel(1);
 
         assertEquals(CancelStatus.UNKNOWN_ORDER, result.status());
         assertEquals(0, result.cancelledQuantity());
@@ -67,10 +77,10 @@ class MatchingEngineCancelTest {
 
     @Test
     void cancelIncomingOrderThatNeverRestedIsUnknown() {
-        engine.submit(req(Side.SELL, 100, 10));                // id 1 rests
-        engine.submit(req(Side.BUY, 100, 10));                 // id 2 fully filled on arrival
+        submit(req(Side.SELL, 100, 10));                // id 1 rests
+        submit(req(Side.BUY, 100, 10));                 // id 2 fully filled on arrival
 
-        CancelResult result = engine.cancel(2);
+        CancelResult result = cancel(2);
 
         assertEquals(CancelStatus.UNKNOWN_ORDER, result.status());
         assertEquals(0, result.cancelledQuantity());
@@ -78,10 +88,10 @@ class MatchingEngineCancelTest {
 
     @Test
     void secondCancelOfSameOrderIsUnknown() {
-        engine.submit(req(Side.BUY, 100, 10));                 // id 1 rests
-        engine.cancel(1);
+        submit(req(Side.BUY, 100, 10));                 // id 1 rests
+        cancel(1);
 
-        CancelResult second = engine.cancel(1);
+        CancelResult second = cancel(1);
 
         assertEquals(CancelStatus.UNKNOWN_ORDER, second.status());
         assertEquals(0, second.cancelledQuantity());
@@ -89,9 +99,9 @@ class MatchingEngineCancelTest {
 
     @Test
     void cancelOfNeverIssuedIdIsUnknownAndLeavesBookUnchanged() {
-        engine.submit(req(Side.BUY, 100, 10));                 // id 1 rests
+        submit(req(Side.BUY, 100, 10));                 // id 1 rests
 
-        CancelResult result = engine.cancel(999);
+        CancelResult result = cancel(999);
 
         assertEquals(CancelStatus.UNKNOWN_ORDER, result.status());
         assertEquals(0, result.cancelledQuantity());
@@ -102,11 +112,11 @@ class MatchingEngineCancelTest {
 
     @Test
     void cancelledOrderNoLongerMatches() {
-        engine.submit(req(Side.SELL, 100, 10));                // id 1: best ask
-        engine.submit(req(Side.SELL, 101, 5));                 // id 2
-        engine.cancel(1);
+        submit(req(Side.SELL, 100, 10));                // id 1: best ask
+        submit(req(Side.SELL, 101, 5));                 // id 2
+        cancel(1);
 
-        List<Trade> trades = engine.submit(req(Side.BUY, 101, 10)).trades();   // id 3
+        List<Trade> trades = submit(req(Side.BUY, 101, 10)).trades();   // id 3
 
         assertEquals(1, trades.size());                        // Only id 2 is left to hit.
         assertEquals(2, trades.get(0).getSellOrderId());
@@ -119,12 +129,12 @@ class MatchingEngineCancelTest {
 
     @Test
     void cancelInMiddleOfLevelKeepsTimePriorityOfOthers() {
-        engine.submit(req(Side.SELL, 100, 5));                 // id 1
-        engine.submit(req(Side.SELL, 100, 5));                 // id 2
-        engine.submit(req(Side.SELL, 100, 5));                 // id 3
-        engine.cancel(2);
+        submit(req(Side.SELL, 100, 5));                 // id 1
+        submit(req(Side.SELL, 100, 5));                 // id 2
+        submit(req(Side.SELL, 100, 5));                 // id 3
+        cancel(2);
 
-        List<Trade> trades = engine.submit(req(Side.BUY, 100, 10)).trades();   // id 4
+        List<Trade> trades = submit(req(Side.BUY, 100, 10)).trades();   // id 4
 
         assertEquals(2, trades.size());
         assertEquals(1, trades.get(0).getSellOrderId());       // Oldest first,
@@ -134,12 +144,12 @@ class MatchingEngineCancelTest {
 
     @Test
     void cancelDoesNotMakeIdReusable() {
-        engine.submit(req(Side.BUY, 100, 10));                 // id 1
-        engine.cancel(1);
-        engine.submit(req(Side.BUY, 100, 10));                 // must be id 2, not id 1 again
+        submit(req(Side.BUY, 100, 10));                 // id 1
+        cancel(1);
+        submit(req(Side.BUY, 100, 10));                 // must be id 2, not id 1 again
 
-        assertEquals(CancelStatus.UNKNOWN_ORDER, engine.cancel(1).status());
-        CancelResult result = engine.cancel(2);
+        assertEquals(CancelStatus.UNKNOWN_ORDER, cancel(1).status());
+        CancelResult result = cancel(2);
         assertEquals(CancelStatus.CANCELLED, result.status());
         assertEquals(10, result.cancelledQuantity());
     }
