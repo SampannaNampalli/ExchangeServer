@@ -1,6 +1,6 @@
 import java.time.Instant;
 
-public class NewOrderCommand {
+public final class NewOrderCommand implements Command {
     private final OrderRequest orderRequest;
     private final long sequenceNumber;
     private final Instant timestamp;

@@ -1,6 +1,6 @@
 import java.time.Instant;
 
-public class CancelOrderCommand {
+public final class CancelOrderCommand implements Command {
     private final long sequenceNumber;
     private final Instant timestamp;
     private final long orderId;
