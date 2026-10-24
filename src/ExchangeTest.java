@@ -141,16 +141,4 @@ class ExchangeTest {
             assertEquals(before, Files.readString(dir.resolve("journal.log"), UTF_8));
         }
     }
-
-    @Test
-    void refusesAJournalThatAlreadyHoldsCommandsUntilReplayExists() throws IOException {
-        exchange.submit(OrderRequest.limit(Side.BUY, 100, 10));
-        exchange.close();
-
-        try (CommandJournal reopened = CommandJournal.open(dir.resolve("journal.log"))) {
-            // A fresh sequencer would hand out seq 1 and id 1 again.
-            assertThrows(IllegalStateException.class,
-                    () -> new Exchange(new Sequencer(), reopened, new MatchingEngine(new OrderBook())));
-        }
-    }
 }

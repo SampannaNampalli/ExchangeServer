@@ -17,13 +17,29 @@ public final class Exchange implements AutoCloseable {
     private final MatchingEngine engine;
 
     public Exchange(Sequencer sequencer, CommandJournal journal, MatchingEngine engine) throws IOException {
-        // A fresh sequencer and engine would reuse sequence numbers and ids already in the journal.
-        if (!journal.isEmpty()) {
-            throw new IllegalStateException("Journal already holds commands; restoring from it is step 3D (replay).");
-        }
         this.sequencer = sequencer;
         this.journal = journal;
         this.engine = engine;
+
+        // A fresh sequencer and engine would reuse sequence numbers and ids already in the journal.
+        if (!journal.isEmpty()) {
+            Replay replay = new Replay(engine, journal);
+            try {
+                replay.startReplay();
+            }
+            catch (Throwable t) {
+                try {
+                    journal.close();
+                }
+                catch (IOException closeException) {
+                    t.addSuppressed(closeException);
+                }
+                throw t;
+            }
+            sequencer.setNextNewOrderId(replay.getLastNewOrderId() + 1);
+            sequencer.setNextSequenceNumber(replay.getLastSequenceNumber() + 1);
+            sequencer.setPreviousTimeStampInstant(replay.getLastTimeStampInstant());
+        }
     }
 
     public Response submit(OrderRequest request) throws IOException {

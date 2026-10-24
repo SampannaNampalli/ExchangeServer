@@ -1,7 +1,7 @@
 # ExchangeServer — Vision v3
 
 **Supersedes:** `ExchangeServer_Vision.md` (v1) and `ExchangeServer_Vision_v2.md`. This version is **self-contained**: nothing needs to be carried over from earlier versions.
-**Companion:** `ExchangeServer_Spec_v7.md` (exact code state, decisions, open threads).
+**Companion:** `ExchangeServer_Spec_v8.md` (exact code state, decisions, open threads).
 **Rule:** the roadmap lives **only here**. The spec points to it and does not duplicate it.
 
 ---
@@ -30,7 +30,7 @@ A single-instrument limit order book with a price-time-priority matching engine,
                                                            fills, market data
 ```
 
-Status: domain model, matching engine and API entry point exist. The book supports O(1) cancel (roadmap step 1 done, 2026-10-17). Cancel goes through the engine, and all five order types (limit, IOC, FOK, market, post-only) are implemented with a `Response` per submit (roadmap step 2 done, 2026-10-20). Sequencer, log, gateway, risk checks, market data, benchmarking and recovery are planned.
+Status: domain model, matching engine and API entry point exist. The book supports O(1) cancel (roadmap step 1 done, 2026-10-17). Cancel goes through the engine, and all five order types (limit, IOC, FOK, market, post-only) are implemented with a `Response` per submit (roadmap step 2 done, 2026-10-20). Every command is stamped by a sequencer, fsynced to a write-ahead journal before the engine processes it, and replayed through the same engine on restart (roadmap step 3 done, 2026-10-24). Gateway, risk checks, market data, benchmarking and the poison-pill recovery policy are planned.
 
 ---
 
@@ -59,9 +59,9 @@ Status: domain model, matching engine and API entry point exist. The book suppor
    - The id map contains an id iff that order rests in a level.
    - The book never contains empty price levels.
    - Invariants are protected at their source, not re-checked redundantly by callers.
-2. **One owner per responsibility.** `OrderBook` owns the order lifecycle on the book; `Order` is a domain object; `MatchingEngine` decides what matches mean and does not touch book internals (map, TreeMaps, list nodes). *Known tension:* `PriceLevel.fillHeadOrder()` contains fill logic, which sits between "dumb container" and "business logic" (see Spec v7 open threads).
+2. **One owner per responsibility.** `OrderBook` owns the order lifecycle on the book; `Order` is a domain object; `MatchingEngine` decides what matches mean and does not touch book internals (map, TreeMaps, list nodes). *Known tension:* `PriceLevel.fillHeadOrder()` contains fill logic, which sits between "dumb container" and "business logic" (see Spec v8 open threads).
 3. **One code path where possible.** Fill-removal and cancel share `unlink`; replay shares the live engine path.
-4. **Determinism.** Engine behaviour depends only on the ordered input commands. Ids, timestamps and sequence numbers are stamped before logging; no wall-clock, randomness or hash-order dependence in matching; single writer thread. *Current gap:* `createOrder()` and `match()` still use `Instant.now()` (Spec v7 open threads).
+4. **Determinism.** Engine behaviour depends only on the ordered input commands. Ids, timestamps and sequence numbers are stamped before logging; no wall-clock, randomness or hash-order dependence in matching; single writer thread. *Closed in step 3:* the engine no longer reads the clock or counts ids; the single writer is still enforced by convention until step 4 (Spec v8 §6).
 5. **Inputs are the source of truth.** Log sequenced commands; derive outputs by replay.
 6. **Validate at the right layer.** Stateless checks at the gateway; state-dependent checks in the engine. Internal invariant violations throw; external bad requests return rejects.
 7. **Measure before optimizing.** Simple correct structures first (eager level removal, `TreeMap`); revisit with benchmarks.
@@ -73,7 +73,7 @@ Status: domain model, matching engine and API entry point exist. The book suppor
 
 ---
 
-## 5. Key design commitments (detail in Spec v7)
+## 5. Key design commitments (detail in Spec v8)
 
 - Doubly linked list per price level with sentinel nodes and caller-held node handles (`OrderNode` wrapper owned by the book layer; intrusive in effect, not in `Order`).
 - `orderId -> OrderNode` map in `OrderBook`.

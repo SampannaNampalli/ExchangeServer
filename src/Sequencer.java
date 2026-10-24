@@ -34,4 +34,17 @@ public class Sequencer {
 
         return timeStampInstant;
     }
+
+    // For replay -> Restore counters to the appropriate values.
+    void setNextSequenceNumber(long sequenceNumber) {
+        this.sequenceNumber = sequenceNumber;
+    }
+
+    void setNextNewOrderId(long newOrderId) {
+        orderId = newOrderId;
+    }
+    
+    void setPreviousTimeStampInstant(Instant timeStampInstant) {
+        previousTimeStampInstant = timeStampInstant;
+    }
 }

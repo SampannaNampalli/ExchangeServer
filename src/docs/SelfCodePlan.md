@@ -1,5 +1,18 @@
 # Step 3
 
+## D: Replay
+
+1. Will flow through Exchange.java before starting anew.
+2. New class -> Separation of concerns/components.
+3. Working:
+    1. Read from the log.
+    2. Process each command through the matching engine (same matching engine and sequencer must be used after replay has finished)
+    3. return to driver class, and resume normal execution
+    4. Maybe async functionality is required -> While replay is running, the client must know that they need to wait for some time
+    5. Check for gaps and report if found.
+    6. Since replay will feed commands directly to the matching engine, how to bring sequence numbers and order ids up to the newest order? -> Initialize at the start, and increment every time a command is replayed successfully OR
+    New Sequencer() constructor that takes parameters.
+
 ## A: Commands as data
 
 1. Create a new class -> Commands
